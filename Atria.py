@@ -377,10 +377,15 @@ if __name__ == '__main__':
         signal.signal(signal.SIGINT, finalize_session)
         atexit.register(finalize_session)
 
-        try:
-            bot.polling(none_stop=True)
-        except Exception as e:
-            log_message(f"Error in bot polling: {e}", 'error')
-
         while True:
-            time.sleep(1)
+            try:
+                bot.polling(none_stop=True, timeout=30)
+            except requests.exceptions.ReadTimeout:
+                log_message("Error: Bot polling timeout. Retrying...", 'error')
+                time.sleep(2)
+            except requests.exceptions.RequestException as e:
+                log_message(f"Error in bot polling: {e}", 'error')
+                time.sleep(2)
+            except Exception as e:
+                log_message(f"Unexpected error in bot polling: {e}", 'error')
+                time.sleep(2)
