@@ -10,9 +10,7 @@ import threading
 import time
 import signal
 import atexit
-import win32con
 import pyperclip
-import win32security
 import psutil
 import subprocess
 import requests
