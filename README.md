@@ -35,7 +35,7 @@ git clone https://github.com/mildndmystic/Atria
 
 Alternatively, you can download a specific release of the repository:
 
-1. Go to the [Releases](test) page of this repository.
+1. Go to the [Releases](https://github.com/mildndmystic/Atria/releases) page of this repository.
 2. Find the release you want to download.
 3. Click on the Assets dropdown and select the zip file to download.
 
