@@ -47,28 +47,38 @@ Alternatively, you can run the `Install Atria.bat` script to automatically insta
 Once you have configured your bot, start the script and send commands via the Telegram bot. Below are some available commands:
 
 ### System Control
-- `/shutdown`: Shutdown the PC.
-- `/restart`: Restart the PC.
-- `/dtaskmgr`: Disable Task Manager.
+- `/shutdown`: Shuts down user's PC.
+- `/restart`: Restart user's PC.
+- `/dtaskmgr`: Disables Task Manager.
+- `/drun`: Disables Run command.
+- `/dregistry`: Disables Registry Tools.
 
 ### File Operations
-- `/screenshot`: Capture and send a screenshot.
-- `/upload`: Upload a file from your PC.
-- `/download <filename>`: Download a file from your PC.
+- `/screenshot`: Captures and send a screenshot.
+- `/webscreenshot`: Takes a screenshot from the user's webcam.
+- `/upload`: Uploads a file from the user's PC.
+- `/download <filename>`: Downloads a file from the user's PC.
 
 ### Screen and Audio Recording
-- `/screenrecord <seconds>`: Record the screen for the specified time.
-- `/mic <seconds>`: Record audio from the microphone for the specified time.
-- `/webcam <seconds>`: Record video from the webcam for the specified time.
+- `/screenrecord <seconds>`: Record the screen for the specified duration.
+- `/mic <seconds>`: Records audio from the microphone for the specified duration.
+- `/webcam <seconds>`: Records video from the webcam for the specified duration.
 
 ### Security and User Info
+- `/info`: Shows PC info including IP, location, and more.
+- `/users`: Shows all user accounts on the user's PC.
+- `/whoami`: Displays the currently logged-on user.
 - `/passwords`: Retrieve saved Chrome passwords.
 - `/wifilist`: List all saved Wi-Fi networks.
 - `/wifipass <network_name>`: Show Wi-Fi password for a specific network.
+- `/robloxcookie`: Attempts to retrieve Roblox cookies from various browsers.
 
 ### Miscellaneous
+- `/help`: List all available commands.
+- `/hide`: Hides the compiled Python script by adding the hidden attribute.
 - `/tasklist`: List all running tasks.
 - `/taskkill <process>`: Kill a specific process by name or PID.
+- `/shell <command>`: Execute commands in a hidden shell.
 
 ## Disclaimer
 
