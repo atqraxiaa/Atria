@@ -17,17 +17,39 @@ Atria is a versatile Python-based tool designed to control a computer via a Tele
 Before using Atria, ensure you have the following installed:
 - Python 3.12.5 (run `Install Atria.bat` to automatically install or to update to the latest version)
 - Telegram bot token (created via [BotFather](https://core.telegram.org/bots#botfather))
-- Chat ID from Telegram bot
+- Chat ID
 
-### Dependencies
-It is recommended that you run the `Install Atria.bat` script to install the dependencies automatically. However, if you prefer to install them manually, follow these steps:
+## Downloading the Repository
+
+You can download the repository in one of two ways:
+
+### Option 1: Clone via Git
+
+If you have Git installed, you can clone the repository using the following command:
 
 ```bash
-python -m venv %~dp0\Atria
-cd %~dp0\Atria
-.\Scripts\Activate
-pip install -r requirements.txt
+git clone https://github.com/mildndmystic/Atria
 ```
+
+### Option 2: Download from Releases Tab
+
+Alternatively, you can download a specific release of the repository:
+
+1. Go to the [Releases](test) page of this repository.
+2. Find the release you want to download.
+3. Click on the Assets dropdown and select the zip file to download.
+
+After downloading, extract the ZIP file to your desired location.
+
+## Dependencies
+
+It is recommended that you run the `Install Atria.bat` script to install the dependencies automatically. This script will:
+
+1. Create a virtual environment in the `Atria` folder.
+2. Activate the virtual environment.
+3. Install the required dependencies listed in the `requirements.txt` file.
+
+To use the script, simply double-click `Install Atria.bat`, and it will handle the setup for you.
 
 ## Configuration
 
