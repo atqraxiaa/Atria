@@ -104,4 +104,4 @@ Once you have configured your bot, start the script and send commands via the Te
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
