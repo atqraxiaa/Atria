@@ -28,7 +28,7 @@ You can download the repository in one of two ways:
 If you have Git installed, you can clone the repository using the following command:
 
 ```bash
-git clone https://github.com/mildndmystic/Atria
+git clone https://github.com/mildndmystic/Atria.git
 ```
 
 ### Option 2: Download from Releases Tab
@@ -63,11 +63,13 @@ To get the **bot token**, follow these steps:
 To get your **chat ID**, follow these steps:
 1. Search for the bot you just created and start a conversation with it.
 2. Send any message to the bot.
-3. Visit the following URL in your browser, replacing `<YOUR_BOT_TOKEN>` with the token you received from BotFather: 
+3. Visit the following URL in your browser, replacing `<YOUR_BOT_TOKEN>` with the token you received from BotFather:
+   
    ```
    https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
    ```
-4. Look for `"chat":{"id":` in the response. The number that follows is your chat ID.
+   
+5. Look for `"chat":{"id":` in the response. The number that follows is your chat ID.
 
 ### 3. Running the Bot
 1. After you have the **bot token** and **chat ID**, run the `Run Atria.bat` file to start the Atria GUI.
@@ -76,9 +78,11 @@ To get your **chat ID**, follow these steps:
 ### 4. Compile Script (Optional)
 If you wish to compile the script to an executable:
 - Run the following command to compile:
+  
     ```bash
     pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py
     ```
+    
 - Or use the GUI feature by clicking **Compile Script** after doing Step 3.
 
 
