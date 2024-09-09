@@ -15,32 +15,50 @@ Atria is a versatile Python-based tool designed to control a computer via a Tele
 ## Prerequisites
 
 Before using Atria, ensure you have the following installed:
-- Python 3.x
+- Python 3.12.5 (run `Install Atria.bat` to automatically install or to update to the latest version.)
 - Telegram bot token (created via [BotFather](https://core.telegram.org/bots#botfather))
+- Chat ID from Telegram bot
 
 ### Dependencies
-Install the required Python libraries by running:
+It is recommended that you run the `Install Atria.bat` script to install the dependencies automatically. However, if you prefer to install them manually, follow these steps:
 
 ```bash
+python -m venv %~dp0\Atria
+cd %~dp0\Atria
+.\Scripts\Activate
 pip install -r requirements.txt
 ```
 
-Alternatively, you can run the `Install Atria.bat` script to automatically install dependencies.
-
 ## Configuration
 
-1. **Bot Token**: Add your bot token to the `bot_config.txt` file, located in the script directory. The format should be:
-    ```text
-    bot_token=<YOUR_BOT_TOKEN>
-    chat_id=<CHAT_ID>
-    ```
+### 1. Getting the Bot Token
+To get the **bot token**, follow these steps:
+1. Open the Telegram app and search for **BotFather**.
+2. Start a chat with **BotFather** and send the command `/newbot`.
+3. Follow the instructions to name your bot and get a **token**. It will look something like this: `123456789:ABCdefGhIJKlmNOpQrsTUVwXYZabcDEFgHI`.
 
-2. **Compile Script (Optional)**: If you wish to compile the script to an executable:
-    - Run the following command to compile:
+### 2. Getting the Chat ID
+To get your **chat ID**, follow these steps:
+1. Search for the bot you just created and start a conversation with it.
+2. Send any message to the bot.
+3. Visit the following URL in your browser, replacing `<YOUR_BOT_TOKEN>` with the token you received from BotFather: 
+   ```
+   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
+   ```
+4. Look for `"chat":{"id":` in the response. The number that follows is your chat ID.
+
+### 3. Running the Bot
+1. After you have the **bot token** and **chat ID**, run the `Run Atria.bat` file to start the Atria GUI.
+2. Enter the bot token and chat ID into the fields in the GUI and click **Save Configuration**.
+
+### 4. Compile Script (Optional)
+If you wish to compile the script to an executable:
+- Run the following command to compile:
     ```bash
     pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py
     ```
-    - Or use the GUI feature by running the script in a non-compiled mode.
+- Or use the GUI feature by running the script in non-compiled mode by opening `Run Atria.bat`.
+
 
 ## How to Use
 
@@ -54,13 +72,13 @@ Once you have configured your bot, start the script and send commands via the Te
 - `/dregistry`: Disables Registry Tools.
 
 ### File Operations
-- `/screenshot`: Captures and send a screenshot.
+- `/screenshot`: Captures and sends a screenshot.
 - `/webscreenshot`: Takes a screenshot from the user's webcam.
 - `/upload`: Uploads a file from the user's PC.
 - `/download <filename>`: Downloads a file from the user's PC.
 
 ### Screen and Audio Recording
-- `/screenrecord <seconds>`: Record the screen for the specified duration.
+- `/screenrecord <seconds>`: Records the screen for the specified duration.
 - `/mic <seconds>`: Records audio from the microphone for the specified duration.
 - `/webcam <seconds>`: Records video from the webcam for the specified duration.
 
