@@ -57,7 +57,7 @@ If you wish to compile the script to an executable:
     ```bash
     pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py
     ```
-- Or use the GUI feature by clicking **Compile Script** after step 3.
+- Or use the GUI feature by clicking **Compile Script** after doing Step 3.
 
 
 ## How to Use
