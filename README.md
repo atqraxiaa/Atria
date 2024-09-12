@@ -36,6 +36,9 @@ git clone https://github.com/mildndmystic/Atria.git
 Alternatively, you can download a specific release of the repository:
 
 1. Go to the [Releases](https://github.com/mildndmystic/Atria/releases) page of this repository.
+
+![image](https://github.com/user-attachments/assets/b5698ba4-374c-4af2-b05b-8b3aee953356)
+
 2. Find the release you want to download.
 3. Click on the Assets dropdown and select the zip file to download.
 
@@ -56,8 +59,14 @@ To use the script, simply double-click `Install Atria.bat`, and it will handle t
 ### 1. Getting the Bot Token
 To get the **bot token**, follow these steps:
 1. Open the Telegram app and search for **BotFather**.
+
+![image](https://github.com/user-attachments/assets/e88fb689-d303-442b-a938-7e83e0969912)
+
 2. Start a chat with **BotFather** and send the command `/newbot`.
 3. Follow the instructions to name your bot and get a **token**. It will look something like this: `123456789:ABCdefGhIJKlmNOpQrsTUVwXYZabcDEFgHI`.
+
+![Screenshot 2024-09-12 105835](https://github.com/user-attachments/assets/0e7b0419-6a56-4f1f-8cd4-bb4d72788326)
+
 
 ### 2. Getting the Chat ID
 To get your **chat ID**, follow these steps:
@@ -68,23 +77,30 @@ To get your **chat ID**, follow these steps:
    ```
    https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
    ```
-   
-5. Look for `"chat":{"id":` in the response. The number that follows is your chat ID.
 
+![2024-09-12 11-05-46](https://github.com/user-attachments/assets/81bbdfe8-7b4e-462f-be1e-affa66afd0df)
+
+   
+4. Look for `"chat":{"id":` in the response. The number that follows is your chat ID.
+
+![Screenshot 2024-09-12 110711](https://github.com/user-attachments/assets/3e503537-bb58-4df0-a048-d7096430867d)
+
+   
 ### 3. Running the Bot
 1. After you have the **bot token** and **chat ID**, run the `Run Atria.bat` file to start the Atria GUI.
 2. Enter the bot token and chat ID into the fields in the GUI and click **Save Configuration**.
 
+![image](https://github.com/user-attachments/assets/cab15c63-9ec8-4b75-80f5-aa7fe9456776)
+
 ### 4. Compile Script (Optional)
 If you wish to compile the script to an executable:
-- Run the following command to compile:
+- Use the GUI feature by clicking **Compile Script** after doing Step 3.
+  
+- Or if you want to do it manually, use the following command to compile:
   
     ```bash
     pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py
     ```
-    
-- Or use the GUI feature by clicking **Compile Script** after doing Step 3.
-
 
 ## How to Use
 
