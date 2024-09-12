@@ -73,6 +73,9 @@ if %errorlevel% neq 0 (
 
 del "%~dp0python_installer.exe"
 
+set "PYTHON_PATH=%LocalAppData%\Programs\Python\Python312"
+setx PATH "%PYTHON_PATH%;%PYTHON_PATH%\Scripts;%PATH%"
+
 echo Python has been installed. Installing packages...
 timeout /t 5 /nobreak >nul
 goto InstallPackages
