@@ -19,6 +19,9 @@ Before using Atria, ensure you have the following installed:
 - Telegram bot token (created via [BotFather](https://core.telegram.org/bots#botfather))
 - Chat ID
 
+## Video Tutorial
+[Atria Tutorial.mp4](https://mega.nz/file/r4Ux3KjA#ZTjKH5oJUYmkvZmGrjEBTYKs0vhEqU3wWgAgrseJub4)
+
 ## Downloading the Repository
 
 You can download the repository in one of two ways:
