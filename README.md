@@ -115,6 +115,7 @@ Once you have configured your bot, start the script and send commands via the Te
 - `/dtaskmgr`: Disables Task Manager.
 - `/drun`: Disables Run command.
 - `/dregistry`: Disables Registry Tools.
+- `/dwinsec`: Disables Windows Security Protections.
 
 ### File Operations
 - `/screenshot`: Captures and sends a screenshot.
