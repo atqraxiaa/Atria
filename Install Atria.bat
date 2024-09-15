@@ -6,6 +6,7 @@ net sess>nul 2>&1||(echo(CreateObject("Shell.Application"^).ShellExecute"%~0",,,
 
 set "REQUIREMENTS_FILE=requirements.txt"
 set "PYTHON_EXE=python"
+set "TARGET_VERSION=3.12.6"
 
 if exist "%SystemRoot%\System32\python.exe" set "PYTHON_EXE=%SystemRoot%\System32\python.exe"
 if exist "%SystemRoot%\System32\py.exe" set "PYTHON_EXE=%SystemRoot%\System32\py.exe"
@@ -23,7 +24,6 @@ for /f "tokens=1,2,3 delims=." %%a in ("%PY_VER%") do (
     set PATCH_VER=%%c
 )
 
-set "TARGET_VERSION=3.12.5"
 for /f "tokens=1,2,3 delims=." %%a in ("%TARGET_VERSION%") do (
     set TARGET_MAJOR=%%a
     set TARGET_MINOR=%%b
@@ -58,11 +58,13 @@ if %MAJOR_VER% GTR %TARGET_MAJOR% (
 )
 
 :Update
-echo Downloading Python 3.12.5 installer...
-powershell -Command "Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.12.5/python-3.12.5-amd64.exe -OutFile \"%~dp0python_installer.exe\" -UseBasicParsing"
+set "TARGET_VERSION=3.12.6"
+
+echo Downloading Python %TARGET_VERSION% installer...
+powershell -Command "Invoke-WebRequest -Uri https://www.python.org/ftp/python/%TARGET_VERSION%/python-%TARGET_VERSION%-amd64.exe -OutFile \"%~dp0python_installer.exe\" -UseBasicParsing"
 powershell -Command "while (!(Test-Path \"%~dp0python_installer.exe\")) { Start-Sleep -Milliseconds 100 }"
 
-echo Installing Python 3.12.5...
+echo Installing Python %TARGET_VERSION%...
 "%~dp0python_installer.exe" /quiet PrependPath=1
 
 if %errorlevel% neq 0 (
@@ -78,6 +80,8 @@ set "PYTHON_PATH=%LocalAppData%\Programs\Python\Python312"
 setx PATH "%PYTHON_PATH%;%PYTHON_PATH%\Scripts;%PATH%"
 
 echo Python has been installed. Installing packages...
+echo If the logs below contain errors, please run this batch file again.
+echo,
 timeout /t 5 /nobreak >nul
 goto InstallPackages
 
