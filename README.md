@@ -15,12 +15,12 @@ Atria is a versatile Python-based tool designed to control a computer via a Tele
 ## Prerequisites
 
 Before using Atria, ensure you have the following installed:
-- Python 3.12.5 (run `Install Atria.bat` to automatically install or to update to the latest version)
+- Python 3.12.6 (run `Install Atria.bat` to automatically install or to update to the latest version)
 - Telegram bot token (created via [BotFather](https://core.telegram.org/bots#botfather))
-- Chat ID
+- Chat ID from Telegram
 
 ## Getting Started
-Follow the steps in the [video tutorial](https://mega.nz/file/r4Ux3KjA#ZTjKH5oJUYmkvZmGrjEBTYKs0vhEqU3wWgAgrseJub4) for a detailed walkthrough, or refer to the manual instructions below to set up and run the script.
+Follow the steps in this [video tutorial](https://mega.nz/file/r4Ux3KjA#ZTjKH5oJUYmkvZmGrjEBTYKs0vhEqU3wWgAgrseJub4) for a detailed walkthrough, or refer to the manual instructions below to set up and run the script.
 
 ## Downloading the Repository
 
