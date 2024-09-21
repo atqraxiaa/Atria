@@ -116,6 +116,7 @@ Once you have configured your bot, start the script and send commands via the Te
 - `/drun`: Disables Run command.
 - `/dregistry`: Disables Registry Tools.
 - `/dwinsec`: Disables Windows Security Protections.
+- `/dkeylog`: Sends all keylog/clipboard logs.
 
 ### File Operations
 - `/screenshot`: Captures and sends a screenshot.
