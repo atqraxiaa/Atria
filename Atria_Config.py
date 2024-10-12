@@ -6,14 +6,6 @@ import requests
 import hashlib
 import os
 import sys
-impor ttest
-fse
-fae
-fs
-fs
-fs
-ef
-tangina mo fk u
 
 current_version = "beta 1.1"
 bot_token_file = "bot_config.txt"
@@ -29,15 +21,25 @@ class UpdateThread(QThread):
     # Method to update repository and log messages
     def update_repository(self):
         self.log_signal.emit("Checking for updates from the repository...")
-
+    
         repo_items = get_files_from_repo()
         self.log_signal.emit(f"Fetched {len(repo_items)} items from the repository.")
-
+    
+        updated_files = []  # To track updated files
+    
         for item in repo_items:
             self.log_signal.emit(f"Processing item: {item['path']}")
             process_repo_item(item, self.log_signal.emit)
-
+            # Check if the item was downloaded (updated)
+            if item['type'] == 'file' and os.path.exists(os.path.join(os.getcwd(), item['path'])):
+                updated_files.append(item['path'])
+    
         self.log_signal.emit("Update completed.")
+    
+    # Restart the script if any files were updated
+    if updated_files:
+        self.log_signal.emit("Restarting the application...")
+        self.restart_script()
 
 # Initialize GUI for bot configuration
 class BotConfigGUI(QWidget):
@@ -113,6 +115,10 @@ class BotConfigGUI(QWidget):
             )
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
+
+    def restart_script(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
     # Get resource path based on execution mode
     def get_resource_path(self):
