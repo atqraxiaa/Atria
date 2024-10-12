@@ -35,11 +35,15 @@ class UpdateThread(QThread):
                 updated_files.append(item['path'])
     
         self.log_signal.emit("Update completed.")
-    
-    # Restart the script if any files were updated
-    if updated_files:
-        self.log_signal.emit("Restarting the application...")
-        self.restart_script()
+
+        # Restart the script if any files were updated
+        if updated_files:
+            self.log_signal.emit("Restarting the application...")
+            self.restart_script()
+
+    def restart_script(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
 # Initialize GUI for bot configuration
 class BotConfigGUI(QWidget):
@@ -115,10 +119,6 @@ class BotConfigGUI(QWidget):
             )
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
-
-    def restart_script(self):
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
 
     # Get resource path based on execution mode
     def get_resource_path(self):
@@ -212,6 +212,7 @@ def download_file(file_url, file_path):
     except requests.exceptions.RequestException as e:
         print(f"Failed to download {file_path}: {e}")
 
+# Function to process each item in the repository
 def process_repo_item(item, logger):  # Add logger parameter
     try:
         item_path = item['path']
