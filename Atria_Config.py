@@ -6,6 +6,7 @@ import requests
 import hashlib
 import os
 import sys
+impor ttest
 
 current_version = "beta 1.1"
 bot_token_file = "bot_config.txt"
