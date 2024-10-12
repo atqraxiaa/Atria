@@ -7,7 +7,7 @@ import hashlib
 import os
 import sys
 
-current_version = "beta 1.1"
+current_version = "beta 1.1 test"
 bot_token_file = "bot_config.txt"
 repo_api_url = "https://api.github.com/repos/mildndmystic/Atria/contents/"
 
