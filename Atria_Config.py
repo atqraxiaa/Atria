@@ -13,6 +13,7 @@ fs
 fs
 fs
 ef
+tangina mo fk u
 
 current_version = "beta 1.1"
 bot_token_file = "bot_config.txt"
