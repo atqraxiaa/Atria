@@ -14,7 +14,6 @@ import threading
 import time
 import wave
 import winreg
-import churva tangina mo
 
 # Third-party library imports, run "Install Atria.bat" to install modules via pip
 import keyboard
