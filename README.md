@@ -103,7 +103,7 @@ If you wish to compile the script to an executable:
 - Or if you want to do it manually, use the following command to compile:
   
     ```bash
-    pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py
+    pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria_Main.py
     ```
 
 ## How to Use
