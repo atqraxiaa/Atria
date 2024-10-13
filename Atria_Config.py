@@ -7,11 +7,10 @@ import hashlib
 import os
 import sys
 
-current_version = "beta 1.1 test"
+current_version = "beta 1.1"
 bot_token_file = "bot_config.txt"
 repo_api_url = "https://api.github.com/repos/mildndmystic/Atria/contents/"
 
-# Thread class for updating the repository
 class UpdateThread(QThread):
     log_signal = pyqtSignal(str)
     restart_signal = pyqtSignal()
@@ -19,7 +18,6 @@ class UpdateThread(QThread):
     def run(self):
         self.update_repository()
 
-    # Method to update repository and log messages
     def update_repository(self):
         self.log_signal.emit("Checking for updates from the repository...")
     
@@ -36,26 +34,22 @@ class UpdateThread(QThread):
     
         self.log_signal.emit("Update completed.")
 
-        # Restart the script only if updates were needed
         if update_needed:
             self.log_signal.emit("Updates found. Restarting the application...")
             self.restart_signal.emit()
         else:
             self.log_signal.emit("No updates found. Application will not restart.")
 
-# Initialize GUI for bot configuration
 class BotConfigGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
 
-        # Start the update thread
         self.update_thread = UpdateThread()
         self.update_thread.log_signal.connect(self.log)
         self.update_thread.restart_signal.connect(self.restart_script)
         self.update_thread.start()
 
-    # UI setup for Atria configuration
     def initUI(self):
         self.setWindowTitle('Atria Configuration')
         self.setGeometry(100, 100, 500, 400)
@@ -102,11 +96,9 @@ class BotConfigGUI(QWidget):
         layout.addWidget(self.console)
         self.setLayout(layout)
 
-    # Append text to the console
     def log(self, message):
         self.console.append(message)
 
-    # Starts script compilation with alert
     def compile_script(self):
         try:
             QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
@@ -119,16 +111,13 @@ class BotConfigGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
 
-    # Restart script if needed
     def restart_script(self):
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
-    # Get resource path based on execution mode
     def get_resource_path(self):
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), bot_token_file)
         
-    # Load and validate config file
     def load_configuration(self):
         global current_version
         config_path = self.get_resource_path()
@@ -149,7 +138,6 @@ class BotConfigGUI(QWidget):
             print(f"Error loading configuration: {e}", 'error')
             return '', '', current_version
         
-    # Saves bot configuration and shows alerts
     def save_configuration(self):
         try:
             bot_token = self.token_input.text()
@@ -167,7 +155,6 @@ class BotConfigGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to save configuration: {str(e)}')
         
-    # Create a default configuration file
     def create_default_config(self, config_path):
         with open(config_path, 'w') as file:
             file.write("bot_token=\n")
@@ -216,7 +203,6 @@ def download_file(file_url, file_path):
     except requests.exceptions.RequestException as e:
         print(f"Failed to download {file_path}: {e}")
 
-# Function to process each item in the repository
 def process_repo_item(item, logger):
     try:
         item_path = item['path']
@@ -224,7 +210,6 @@ def process_repo_item(item, logger):
             local_file_path = os.path.join(os.path.dirname(__file__), item_path)
             raw_url = f"https://raw.githubusercontent.com/mildndmystic/Atria/main/{item_path}"
 
-            # Compare file hashes before updating
             local_hash = get_file_hash(local_file_path)
             remote_hash = get_remote_file_hash(raw_url)
 
