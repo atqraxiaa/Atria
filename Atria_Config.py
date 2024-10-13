@@ -13,7 +13,8 @@ repo_api_url = "https://api.github.com/repos/mildndmystic/Atria/contents/"
 
 # Thread class for updating the repository
 class UpdateThread(QThread):
-    log_signal = pyqtSignal(str)  # Signal to log messages
+    log_signal = pyqtSignal(str)
+    restart_signal = pyqtSignal()
 
     def run(self):
         self.update_repository()
@@ -25,25 +26,22 @@ class UpdateThread(QThread):
         repo_items = get_files_from_repo()
         self.log_signal.emit(f"Fetched {len(repo_items)} items from the repository.")
     
-        updated_files = []  # To track updated files
+        update_needed = False
     
         for item in repo_items:
             self.log_signal.emit(f"Processing item: {item['path']}")
-            process_repo_item(item, self.log_signal.emit)
-            # Check if the item was downloaded (updated)
-            if item['type'] == 'file' and os.path.exists(os.path.join(os.getcwd(), item['path'])):
-                updated_files.append(item['path'])
+            file_updated = process_repo_item(item, self.log_signal.emit)
+            if file_updated:
+                update_needed = True
     
         self.log_signal.emit("Update completed.")
 
-        # Restart the script if any files were updated
-        if updated_files:
-            self.log_signal.emit("Restarting the application...")
-            self.restart_script()
-
-    def restart_script(self):
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
+        # Restart the script only if updates were needed
+        if update_needed:
+            self.log_signal.emit("Updates found. Restarting the application...")
+            self.restart_signal.emit()
+        else:
+            self.log_signal.emit("No updates found. Application will not restart.")
 
 # Initialize GUI for bot configuration
 class BotConfigGUI(QWidget):
@@ -53,8 +51,9 @@ class BotConfigGUI(QWidget):
 
         # Start the update thread
         self.update_thread = UpdateThread()
-        self.update_thread.log_signal.connect(self.log)  # Connect log signal to the log method
-        self.update_thread.start()  # Start the update process in a separate thread
+        self.update_thread.log_signal.connect(self.log)
+        self.update_thread.restart_signal.connect(self.restart_script)
+        self.update_thread.start()
 
     # UI setup for Atria configuration
     def initUI(self):
@@ -119,6 +118,11 @@ class BotConfigGUI(QWidget):
             )
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
+
+    # Restart script if needed
+    def restart_script(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
     # Get resource path based on execution mode
     def get_resource_path(self):
@@ -213,33 +217,31 @@ def download_file(file_url, file_path):
         print(f"Failed to download {file_path}: {e}")
 
 # Function to process each item in the repository
-def process_repo_item(item, logger):  # Add logger parameter
+def process_repo_item(item, logger):
     try:
         item_path = item['path']
-        raw_url = item['download_url']
-
         if item['type'] == 'file':
-            local_file_path = os.path.join(os.getcwd(), item_path)
+            local_file_path = os.path.join(os.path.dirname(__file__), item_path)
+            raw_url = f"https://raw.githubusercontent.com/mildndmystic/Atria/main/{item_path}"
 
+            # Compare file hashes before updating
             local_hash = get_file_hash(local_file_path)
             remote_hash = get_remote_file_hash(raw_url)
 
-            if local_hash is None:
-                logger(f"File {local_file_path} is missing. Downloading the file...")  # Use logger
+            if local_hash != remote_hash:
+                logger(f"Updating file: {item_path}")
                 download_file(raw_url, local_file_path)
-            elif local_hash != remote_hash:
-                logger(f"File {local_file_path} is outdated. Downloading the updated version...")  # Use logger
-                download_file(raw_url, local_file_path)
+                return True
             else:
-                logger(f"File {local_file_path} is the latest version. Skipping download.")  # Use logger
-
+                logger(f"No updates needed for: {item_path}")
+                return False
         elif item['type'] == 'dir':
-            directory_items = get_files_from_repo(item_path)
-            for sub_item in directory_items:
-                process_repo_item(sub_item, logger)  # Pass logger for sub-items
-
+            items_in_dir = get_files_from_repo(item_path)
+            for sub_item in items_in_dir:
+                process_repo_item(sub_item, logger)
     except Exception as e:
-        logger(f"Error processing item {item['path']}: {e}")  # Use logger
+        logger(f"Error processing item {item['path']}: {str(e)}")
+        return False
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
