@@ -38,7 +38,7 @@ class UpdateThread(QThread):
             self.log_signal.emit("Updates found. Restarting the application...")
             self.restart_signal.emit()
         else:
-            self.log_signal.emit("No updates found. Application will not restart.")
+            self.log_signal.emit("No updates found.")
 
 class BotConfigGUI(QWidget):
     def __init__(self):
