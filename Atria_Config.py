@@ -105,7 +105,7 @@ class BotConfigGUI(QWidget):
             self.close()
 
             subprocess.Popen(
-                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria.py',
+                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria_Main.py',
                 shell=True
             )
         except Exception as e:
