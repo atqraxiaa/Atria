@@ -11,7 +11,7 @@ cd /d "%SCRIPT_DIR%\Atria"
 if exist "Scripts\Activate" call "Scripts\Activate"
 
 cd /d "%SCRIPT_DIR%"
-python Atria.py > "%LOGFILE%" 2>&1
+python Atria_Config.py > "%LOGFILE%" 2>&1
 set "exit_code=%errorlevel%"
 
 if %exit_code% neq 0 (
