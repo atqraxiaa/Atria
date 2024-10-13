@@ -94,7 +94,7 @@ To get your **chat ID**, follow these steps:
 1. After you have the **bot token** and **chat ID**, run the `Run Atria.bat` file to start the Atria GUI.
 2. Enter the bot token and chat ID into the fields in the GUI and click **Save Configuration**.
 
-![image](https://github.com/user-attachments/assets/cab15c63-9ec8-4b75-80f5-aa7fe9456776)
+![image](https://github.com/user-attachments/assets/2fe1a0ea-9652-4ade-8413-8c107befb2c4)
 
 ### 4. Compile Script (Optional)
 If you wish to compile the script to an executable:
