@@ -6,7 +6,7 @@ net sess>nul 2>&1||(echo(CreateObject("Shell.Application"^).ShellExecute"%~0",,,
 
 set "REQUIREMENTS_FILE=requirements.txt"
 set "PYTHON_EXE=python"
-set "TARGET_VERSION=3.12.7"
+set "TARGET_VERSION=3.13.0"
 
 if exist "%SystemRoot%\System32\python.exe" set "PYTHON_EXE=%SystemRoot%\System32\python.exe"
 if exist "%SystemRoot%\System32\py.exe" set "PYTHON_EXE=%SystemRoot%\System32\py.exe"
@@ -58,7 +58,7 @@ if %MAJOR_VER% GTR %TARGET_MAJOR% (
 )
 
 :Update
-set "TARGET_VERSION=3.12.7"
+set "TARGET_VERSION=3.13.0"
 
 echo Downloading Python %TARGET_VERSION% installer...
 powershell -Command "Invoke-WebRequest -Uri https://www.python.org/ftp/python/%TARGET_VERSION%/python-%TARGET_VERSION%-amd64.exe -OutFile \"%~dp0python_installer.exe\" -UseBasicParsing"
