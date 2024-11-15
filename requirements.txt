@@ -4,13 +4,10 @@ opencv-python
 pyautogui
 pyperclip
 pyaudio
-browser-cookie3
 requests
 telebot
-pywin32
 numpy
 pygetwindow
-pycryptodome
-Pillow
 PyQt6
-pyinstaller
+pyTelegramBotAPI
+pycryptodomex
