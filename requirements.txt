@@ -1,4 +1,5 @@
 pyTelegramBotAPI
+browser-cookie3
 pycryptodomex
 opencv-python
 pygetwindow
@@ -9,6 +10,8 @@ requests
 keyboard
 telebot
 pyaudio
+pywin32
+Pillow
 psutil
 numpy
 PyQt6
