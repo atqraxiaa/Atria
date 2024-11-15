@@ -1,11 +1,9 @@
 from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import subprocess
 import requests
 import hashlib
 import os
-import sys
 
 current_version = "beta 1.1"
 bot_token_file = "bot_config.txt"
