@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon
 import subprocess
 import requests
 import hashlib
+import sys
 import os
 
 current_version = "beta 1.1"
