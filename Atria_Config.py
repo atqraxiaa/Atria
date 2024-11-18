@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit, QFileDialog
+from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit, QFileDialog, QHBoxLayout
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 import subprocess
@@ -25,7 +25,6 @@ class UpdateThread(QThread):
         self.log_signal.emit(f"Fetched {len(repo_items)} items from the repository.")
 
         update_needed = False
-
         for item in repo_items:
             self.log_signal.emit(f"Processing item: {item['path']}")
             file_updated = process_repo_item(item, self.log_signal.emit)
@@ -45,10 +44,16 @@ class BotConfigGUI(QWidget):
         super().__init__()
         self.initUI()
 
-        self.update_thread = UpdateThread()
-        self.update_thread.log_signal.connect(self.log)
-        self.update_thread.restart_signal.connect(self.restart_script)
-        self.update_thread.start()
+        self.selected_image = None
+        self.enable_updates = False
+
+        if self.enable_updates:
+            self.update_thread = UpdateThread()
+            self.update_thread.log_signal.connect(self.log)
+            self.update_thread.restart_signal.connect(self.restart_script)
+            self.update_thread.start()
+        else:
+            self.log("Auto-updates are disabled.")
 
     def initUI(self):
         self.setWindowTitle('Atria Configuration')
@@ -71,13 +76,15 @@ class BotConfigGUI(QWidget):
         self.tutorial_label.setText('Don\'t know how to get these? <a href="https://github.com/mildndmystic/Atria?tab=readme-ov-file#configuration">Click here</a>')
         self.tutorial_label.setOpenExternalLinks(True)
 
+        self.preview_image = QLabel('Icon Preview')
+
         self.help_label = QLabel('Please save the configuration before compiling it.')
 
-        self.file_picker_button = QPushButton('Select Image for Compilation', self)
+        self.file_picker_button = QPushButton('Select an Icon Image', self)
         self.file_picker_button.clicked.connect(self.open_file_picker)
 
         self.image_preview = QLabel(self)
-        self.image_preview.setFixedSize(200, 200)
+        self.image_preview.setFixedSize(75, 75)
         self.image_preview.setStyleSheet('border: 1px solid black;')
 
         self.save_button = QPushButton('Save Configuration', self)
@@ -90,6 +97,10 @@ class BotConfigGUI(QWidget):
         self.console.setPlaceholderText('Console output will appear here...')
         self.console.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
+        side_layout = QHBoxLayout()
+        side_layout.addWidget(self.image_preview)
+        side_layout.addWidget(self.file_picker_button)
+
         layout = QVBoxLayout()
         layout.addWidget(self.status_label)
         layout.addWidget(self.token_label)
@@ -97,9 +108,9 @@ class BotConfigGUI(QWidget):
         layout.addWidget(self.chat_id_label)
         layout.addWidget(self.chat_id_input)
         layout.addWidget(self.tutorial_label)
+        layout.addWidget(self.preview_image)
+        layout.addLayout(side_layout)
         layout.addWidget(self.help_label)
-        layout.addWidget(self.file_picker_button)
-        layout.addWidget(self.image_preview)
         layout.addWidget(self.save_button)
         layout.addWidget(self.compile_button)
         layout.addWidget(self.console)
@@ -111,6 +122,7 @@ class BotConfigGUI(QWidget):
     def open_file_picker(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select Image', '', 'Images (*.png *.jpg *.jpeg *.bmp *.gif)')
         if file_path:
+            self.selected_image = file_path
             self.image_preview.setPixmap(QPixmap(file_path).scaled(
                 self.image_preview.width(),
                 self.image_preview.height(),
@@ -122,10 +134,18 @@ class BotConfigGUI(QWidget):
             QMessageBox.information(self, 'Compilation', 'Compilation started. Check the command prompt for logs.')
             self.close()
 
+            if self.selected_image:
+                icon_option = f'--icon "{self.selected_image}"'
+                add_data_option = f'--add-data "{self.selected_image};."'
+            else:
+                icon_option = ""
+                add_data_option = ""
+
             subprocess.Popen(
-                'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." Atria_Main.py',
+                f'start cmd.exe /K pyinstaller --onefile --noconsole --add-data "bot_config.txt;." {add_data_option} {icon_option} Atria_Main.py',
                 shell=True
             )
+
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Failed to start compilation: {str(e)}')
 
