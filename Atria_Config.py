@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit
+from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QTextEdit, QFileDialog
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPixmap
 import subprocess
 import requests
 import hashlib
@@ -20,18 +20,18 @@ class UpdateThread(QThread):
 
     def update_repository(self):
         self.log_signal.emit("Checking for updates from the repository...")
-    
+
         repo_items = get_files_from_repo()
         self.log_signal.emit(f"Fetched {len(repo_items)} items from the repository.")
-    
+
         update_needed = False
-    
+
         for item in repo_items:
             self.log_signal.emit(f"Processing item: {item['path']}")
             file_updated = process_repo_item(item, self.log_signal.emit)
             if file_updated:
                 update_needed = True
-    
+
         self.log_signal.emit("Update completed.")
 
         if update_needed:
@@ -73,6 +73,13 @@ class BotConfigGUI(QWidget):
 
         self.help_label = QLabel('Please save the configuration before compiling it.')
 
+        self.file_picker_button = QPushButton('Select Image for Compilation', self)
+        self.file_picker_button.clicked.connect(self.open_file_picker)
+
+        self.image_preview = QLabel(self)
+        self.image_preview.setFixedSize(200, 200)
+        self.image_preview.setStyleSheet('border: 1px solid black;')
+
         self.save_button = QPushButton('Save Configuration', self)
         self.compile_button = QPushButton('Compile Script', self)
         self.save_button.clicked.connect(self.save_configuration)
@@ -91,6 +98,8 @@ class BotConfigGUI(QWidget):
         layout.addWidget(self.chat_id_input)
         layout.addWidget(self.tutorial_label)
         layout.addWidget(self.help_label)
+        layout.addWidget(self.file_picker_button)
+        layout.addWidget(self.image_preview)
         layout.addWidget(self.save_button)
         layout.addWidget(self.compile_button)
         layout.addWidget(self.console)
@@ -98,6 +107,15 @@ class BotConfigGUI(QWidget):
 
     def log(self, message):
         self.console.append(message)
+
+    def open_file_picker(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select Image', '', 'Images (*.png *.jpg *.jpeg *.bmp *.gif)')
+        if file_path:
+            self.image_preview_label.setPixmap(QPixmap(file_path).scaled(
+                self.image_preview_label.width(),
+                self.image_preview_label.height(),
+                Qt.AspectRatioMode.KeepAspectRatio
+            ))
 
     def compile_script(self):
         try:
