@@ -45,7 +45,7 @@ class BotConfigGUI(QWidget):
         self.initUI()
 
         self.selected_image = None
-        self.enable_updates = False
+        self.enable_updates = True
 
         if self.enable_updates:
             self.update_thread = UpdateThread()
