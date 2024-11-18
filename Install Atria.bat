@@ -216,10 +216,9 @@ timeout /t 5 /nobreak >nul
 goto InstallPackages
 
 :InstallPackages
-set "SCRIPT_DIR=%~dp0"
-set "VENV_DIR=%SCRIPT_DIR%\Atria"
+set "VENV_DIR=%APPDATA%\Atria"
 
-echo Creating a virtual environment named "Atria"...
+echo Creating a virtual environment on %VENV_DIR%...
 echo,
 if not exist "%VENV_DIR%" (
     python -m venv "%VENV_DIR%"

@@ -2,13 +2,19 @@
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
+set "VENV_DIR=%APPDATA%\Atria"
 set "LOGFILE=%temp%\output.log"
 
 echo Running Atria.py...
 timeout /t 2 /nobreak >nul
 
-cd /d "%SCRIPT_DIR%\Atria"
-if exist "Scripts\Activate" call "Scripts\Activate"
+cd /d "%VENV_DIR%"
+if exist "Scripts\activate.bat" (
+    call "Scripts\activate.bat"
+) else (
+    echo Virtual environment not found in %VENV_DIR%.
+    exit /b 1
+)
 
 cd /d "%SCRIPT_DIR%"
 python Atria_Config.py > "%LOGFILE%" 2>&1
@@ -24,4 +30,5 @@ if %exit_code% neq 0 (
 ) else (
     del "%LOGFILE%"
 )
+
 exit /b %exit_code%
