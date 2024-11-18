@@ -111,9 +111,9 @@ class BotConfigGUI(QWidget):
     def open_file_picker(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select Image', '', 'Images (*.png *.jpg *.jpeg *.bmp *.gif)')
         if file_path:
-            self.image_preview_label.setPixmap(QPixmap(file_path).scaled(
-                self.image_preview_label.width(),
-                self.image_preview_label.height(),
+            self.image_preview.setPixmap(QPixmap(file_path).scaled(
+                self.image_preview.width(),
+                self.image_preview.height(),
                 Qt.AspectRatioMode.KeepAspectRatio
             ))
 
