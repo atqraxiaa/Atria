@@ -1,5 +1,5 @@
-
 # Atria - Telegram Bot Automation
+## Update: This program only supports Python 3.12 - 3.12.7 only!
 
 Atria is a versatile Python-based tool designed to control a computer via a Telegram bot. It provides functionalities like task management, file manipulation, screen recording, and system monitoring. This bot is intended for educational purposes and should not be used for any malicious activities.
 
